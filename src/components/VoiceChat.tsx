@@ -45,9 +45,20 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
     onMessage: (message) => {
       console.log("Message received:", message);
       
-      // Capture transcript messages - cast to any for type flexibility
+      // Capture transcript messages - handle both formats
       const msg = message as any;
-      if (msg.type === "user_transcript") {
+      
+      // New format: source/role/message
+      if (msg.message && msg.role) {
+        const newMessage: TranscriptMessage = { 
+          role: msg.role === "user" ? "user" : "agent", 
+          content: msg.message 
+        };
+        transcriptRef.current = [...transcriptRef.current, newMessage];
+        setLiveTranscript([...transcriptRef.current]);
+      }
+      // Legacy format: type + event objects
+      else if (msg.type === "user_transcript") {
         const userText = msg.user_transcription_event?.user_transcript;
         if (userText) {
           const newMessage: TranscriptMessage = { role: "user", content: userText };
