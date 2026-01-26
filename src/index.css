@@ -2,95 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* MYHALF Design System - Warm & Calming */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Warm, calming palette */
+    --background: 40 33% 98%;
+    --foreground: 220 20% 20%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 40 25% 96%;
+    --card-foreground: 220 20% 20%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 40 25% 96%;
+    --popover-foreground: 220 20% 20%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Soft sage green - primary action color */
+    --primary: 150 25% 45%;
+    --primary-foreground: 40 33% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Warm beige - secondary elements */
+    --secondary: 35 30% 90%;
+    --secondary-foreground: 220 20% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted warm gray */
+    --muted: 35 15% 92%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Soft peach accent */
+    --accent: 25 50% 92%;
+    --accent-foreground: 25 40% 30%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Warm coral for destructive */
+    --destructive: 10 70% 55%;
+    --destructive-foreground: 40 33% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 35 20% 88%;
+    --input: 35 20% 88%;
+    --ring: 150 25% 45%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom MYHALF tokens */
+    --calm-gradient: linear-gradient(135deg, hsl(150 25% 45% / 0.1), hsl(200 30% 50% / 0.1));
+    --warm-gradient: linear-gradient(180deg, hsl(35 40% 95%), hsl(40 33% 98%));
+    --glow-soft: 0 8px 32px -8px hsl(150 25% 45% / 0.2);
+    --shadow-warm: 0 4px 20px -4px hsl(35 30% 50% / 0.15);
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Animation tokens */
+    --transition-gentle: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 40 25% 96%;
+    --sidebar-foreground: 220 20% 20%;
+    --sidebar-primary: 150 25% 45%;
+    --sidebar-primary-foreground: 40 33% 98%;
+    --sidebar-accent: 35 30% 90%;
+    --sidebar-accent-foreground: 220 20% 25%;
+    --sidebar-border: 35 20% 88%;
+    --sidebar-ring: 150 25% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 220 20% 12%;
+    --foreground: 40 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 18% 16%;
+    --card-foreground: 40 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 18% 16%;
+    --popover-foreground: 40 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 150 30% 55%;
+    --primary-foreground: 220 20% 12%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 15% 22%;
+    --secondary-foreground: 40 20% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 15% 20%;
+    --muted-foreground: 40 10% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 25 30% 25%;
+    --accent-foreground: 25 40% 85%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 10 60% 45%;
+    --destructive-foreground: 40 20% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 15% 25%;
+    --input: 220 15% 25%;
+    --ring: 150 30% 55%;
+
+    --sidebar-background: 220 18% 14%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 150 30% 55%;
+    --sidebar-primary-foreground: 220 20% 12%;
+    --sidebar-accent: 220 15% 22%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 220 15% 25%;
+    --sidebar-ring: 150 30% 55%;
   }
 }
 
@@ -100,6 +108,94 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  /* Breathing animation for voice feedback */
+  @keyframes breathe {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes ripple {
+    0% {
+      transform: scale(0.8);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(2.5);
+      opacity: 0;
+    }
+  }
+
+  .animate-breathe {
+    animation: breathe 3s ease-in-out infinite;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-ripple {
+    animation: ripple 2s ease-out infinite;
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+
+  /* Warm gradient backgrounds */
+  .bg-warm-gradient {
+    background: var(--warm-gradient);
+  }
+
+  .bg-calm-gradient {
+    background: var(--calm-gradient);
+  }
+
+  /* Soft shadows */
+  .shadow-warm {
+    box-shadow: var(--shadow-warm);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--glow-soft);
   }
 }
