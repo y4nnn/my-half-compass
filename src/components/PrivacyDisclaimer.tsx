@@ -11,18 +11,18 @@ export function PrivacyDisclaimer({ onAccept, onBack }: PrivacyDisclaimerProps) 
   const privacyPoints = [
     {
       icon: Shield,
-      title: "Safe & Confidential",
-      description: "Your conversation stays between you and our AI. We never share your personal stories.",
+      title: "Sûr et confidentiel",
+      description: "Votre conversation reste entre vous et notre IA. Nous ne partageons jamais vos histoires personnelles.",
     },
     {
       icon: Lock,
-      title: "Secure Matching",
-      description: "We only use themes and patterns from your conversation to find compatible matches—never specific details.",
+      title: "Matching sécurisé",
+      description: "Nous utilisons uniquement les thèmes et patterns de votre conversation pour trouver des matchs compatibles—jamais les détails spécifiques.",
     },
     {
       icon: Eye,
-      title: "You're in Control",
-      description: "Decide what you share with your match. Your full conversation is never visible to others.",
+      title: "Vous gardez le contrôle",
+      description: "C'est vous qui décidez ce que vous partagez avec votre match. Votre conversation complète n'est jamais visible par d'autres.",
     },
   ];
 
@@ -45,10 +45,10 @@ export function PrivacyDisclaimer({ onAccept, onBack }: PrivacyDisclaimerProps) 
             <Shield className="w-8 h-8 text-primary" />
           </div>
           <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-            Your Privacy Matters
+            Votre vie privée compte
           </h2>
           <p className="text-muted-foreground">
-            Before we begin, here's how we protect you
+            Avant de commencer, voici comment nous vous protégeons
           </p>
         </motion.div>
 
@@ -96,7 +96,7 @@ export function PrivacyDisclaimer({ onAccept, onBack }: PrivacyDisclaimerProps) 
             size="lg"
             className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02] group"
           >
-            I Understand
+            J'ai compris
             <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Button>
           <Button
@@ -104,7 +104,7 @@ export function PrivacyDisclaimer({ onAccept, onBack }: PrivacyDisclaimerProps) 
             variant="ghost"
             className="w-full h-12 text-muted-foreground hover:text-foreground"
           >
-            Go Back
+            Retour
           </Button>
         </motion.div>
       </motion.div>

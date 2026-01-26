@@ -22,10 +22,10 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
           <FileText className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-2xl font-display font-bold text-foreground mb-2">
-          Your Profile Report
+          Votre rapport de profil
         </h1>
         <p className="text-muted-foreground">
-          Here's what we learned from our conversation
+          Voici ce que nous avons appris de notre conversation
         </p>
       </motion.div>
 
@@ -40,7 +40,7 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
-              Profile Data (JSON)
+              Données du profil (JSON)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -63,7 +63,7 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
         {profileData?.themes && (
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Key Themes</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Thèmes clés</h3>
               <div className="flex flex-wrap gap-2">
                 {profileData.themes.map((theme: string, index: number) => (
                   <span
@@ -81,7 +81,7 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
         {profileData?.experiences && (
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Experiences</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Expériences</h3>
               <ul className="space-y-1">
                 {profileData.experiences.map((exp: string, index: number) => (
                   <li key={index} className="text-sm text-foreground">
@@ -96,7 +96,7 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
         {profileData?.personality && (
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Personality</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Personnalité</h3>
               <p className="text-sm text-foreground">{profileData.personality}</p>
             </CardContent>
           </Card>
@@ -114,11 +114,11 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
           size="lg"
           className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02]"
         >
-          Find My Match
+          Trouver mon match
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
         <p className="text-center text-xs text-muted-foreground mt-3">
-          We'll use this profile to find someone who truly understands you
+          Nous utiliserons ce profil pour trouver quelqu'un qui vous comprend vraiment
         </p>
       </motion.div>
     </div>

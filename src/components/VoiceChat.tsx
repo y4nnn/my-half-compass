@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { VoiceOrb } from "@/components/ui/VoiceOrb";
@@ -15,7 +15,7 @@ interface VoiceChatProps {
 export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Ready to begin");
+  const [statusMessage, setStatusMessage] = useState("Prêt·e à commencer");
   
   const {
     connect,
@@ -32,15 +32,15 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
   } = useGeminiVoice({
     onConnect: () => {
       console.log("Connected to Gemini voice session");
-      setStatusMessage("Connected - preparing your guide...");
+      setStatusMessage("Connecté - préparation de votre guide...");
     },
     onDisconnect: () => {
       console.log("Disconnected from Gemini voice session");
-      setStatusMessage("Session ended");
+      setStatusMessage("Session terminée");
     },
     onError: (error) => {
       console.error("Gemini voice error:", error);
-      setStatusMessage("Connection error - please try again");
+      setStatusMessage("Erreur de connexion - veuillez réessayer");
       toast.error(error);
     },
     onTranscript: (message) => {
@@ -49,13 +49,13 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
   });
 
   const startConversation = useCallback(async () => {
-    setStatusMessage("Connecting to your guide...");
+    setStatusMessage("Connexion à votre guide...");
     await connect();
   }, [connect]);
 
   const analyzeTranscript = async (transcriptData: TranscriptMessage[]) => {
     setIsAnalyzing(true);
-    setStatusMessage("Analyzing your conversation...");
+    setStatusMessage("Analyse de votre conversation...");
 
     try {
       // Convert transcript format for analyze-profile function
@@ -70,9 +70,9 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
 
       if (error) {
         console.error("Analysis error:", error);
-        toast.error("Failed to analyze conversation");
+        toast.error("Échec de l'analyse de la conversation");
         return {
-          overallSummary: "Analysis failed - using placeholder data",
+          overallSummary: "Analyse échouée - données temporaires",
           transcript: transcriptData,
           error: error.message
         };
@@ -84,9 +84,9 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
       };
     } catch (error) {
       console.error("Analysis failed:", error);
-      toast.error("Failed to analyze conversation");
+      toast.error("Échec de l'analyse de la conversation");
       return {
-        overallSummary: "Analysis failed - using placeholder data",
+        overallSummary: "Analyse échouée - données temporaires",
         transcript: transcriptData
       };
     } finally {
@@ -105,26 +105,25 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
       onComplete(profileData);
     } else {
       onComplete({
-        overallSummary: "Demo session - no transcript captured",
+        overallSummary: "Session démo - pas de transcription capturée",
         matchingKeywords: ["demo", "test"],
         rawTranscript: [],
-        note: "This is demo data. The conversation may have been too short to capture meaningful content."
+        note: "Ceci est une session démo. La conversation était peut-être trop courte."
       });
     }
   }, [disconnect, getTranscript, onComplete]);
 
   const togglePause = () => {
     setIsPaused(!isPaused);
-    // Note: Pause functionality would require additional implementation
   };
 
   const getStatusText = () => {
-    if (isAnalyzing) return "Analyzing your conversation...";
-    if (isConnecting) return "Connecting...";
-    if (isConnected && !sessionReady) return "Preparing session...";
-    if (isSpeaking) return "Speaking to you...";
-    if (isConnected && isListening) return "Listening...";
-    if (isConnected) return "Connected";
+    if (isAnalyzing) return "Analyse de votre conversation...";
+    if (isConnecting) return "Connexion...";
+    if (isConnected && !sessionReady) return "Préparation de la session...";
+    if (isSpeaking) return "Luna vous parle...";
+    if (isConnected && isListening) return "Luna vous écoute...";
+    if (isConnected) return "Connecté";
     return statusMessage;
   };
 
@@ -149,7 +148,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
 
         <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/60 backdrop-blur-sm border border-border/50">
           <Volume2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Voice Session</span>
+          <span className="text-sm text-muted-foreground">Session vocale</span>
         </div>
 
         <div className="w-10" /> {/* Spacer for alignment */}
@@ -204,12 +203,12 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Session</span>
                 <span className={sessionReady ? "text-primary" : "text-muted-foreground"}>
-                  {sessionReady ? "Ready" : "Starting"}
+                  {sessionReady ? "Prête" : "Démarrage"}
                 </span>
               </div>
 
               <div className="mt-2 flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">Mic</span>
+                <span className="text-xs text-muted-foreground">Micro</span>
                 <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-75"
@@ -220,7 +219,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
 
               {!sessionReady && (
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Waiting for the AI to finish setup…
+                  En attente de la préparation de l'IA…
                 </p>
               )}
             </div>
@@ -239,7 +238,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
                 key={idx} 
                 className={`text-sm mb-1 ${msg.role === "user" ? "text-primary" : "text-muted-foreground"}`}
               >
-                <span className="font-medium">{msg.role === "user" ? "You" : "Guide"}:</span> {msg.content}
+                <span className="font-medium">{msg.role === "user" ? "Vous" : "Luna"}:</span> {msg.content}
               </p>
             ))}
           </motion.div>
@@ -254,8 +253,8 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
             transition={{ delay: 0.5 }}
           >
             <p className="text-sm text-muted-foreground leading-relaxed">
-              You'll be speaking with a supportive AI guide who will ask about your 
-              life experiences to help find your perfect match.
+              Vous allez discuter avec Luna, une guide bienveillante qui va apprendre 
+              à vous connaître pour vous trouver quelqu'un qui vous correspond.
             </p>
           </motion.div>
         )}
@@ -276,7 +275,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
               size="lg"
               className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02]"
             >
-              {isConnecting ? "Connecting..." : isAnalyzing ? "Analyzing..." : "Start Conversation"}
+              {isConnecting ? "Connexion..." : isAnalyzing ? "Analyse..." : "Démarrer la conversation"}
             </Button>
           ) : (
             <div className="flex gap-3">
@@ -290,7 +289,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
                 {isPaused ? (
                   <>
                     <Play className="w-5 h-5 mr-2" />
-                    Resume
+                    Reprendre
                   </>
                 ) : (
                   <>
@@ -308,10 +307,10 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Analyzing...
+                    Analyse...
                   </>
                 ) : (
-                  "Complete Session"
+                  "Terminer"
                 )}
               </Button>
             </div>
@@ -319,7 +318,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
 
           {isConnected && !isAnalyzing && (
             <p className="text-center text-xs text-muted-foreground">
-              Take your time. You can pause whenever you need a moment.
+              Prenez votre temps. Vous pouvez faire une pause quand vous voulez.
             </p>
           )}
         </div>

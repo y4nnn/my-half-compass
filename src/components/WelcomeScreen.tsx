@@ -10,18 +10,18 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
   const features = [
     {
       icon: MessageCircle,
-      title: "Share Your Story",
-      description: "Have a meaningful conversation about your life experiences",
+      title: "Partagez votre histoire",
+      description: "Une conversation sincère sur vos expériences de vie",
     },
     {
       icon: Heart,
-      title: "Find Connection",
-      description: "Get matched with someone who truly understands you",
+      title: "Trouvez votre connexion",
+      description: "Soyez mis·e en relation avec quelqu'un qui vous comprend vraiment",
     },
     {
       icon: Users,
-      title: "Build Support",
-      description: "Create a genuine connection with your matched partner",
+      title: "Créez du lien",
+      description: "Construisez une relation authentique avec votre match",
     },
   ];
 
@@ -49,7 +49,7 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             MYHALF
           </h1>
           <p className="text-lg text-muted-foreground">
-            Connection through shared experience
+            Se connecter par l'expérience partagée
           </p>
         </motion.div>
 
@@ -95,10 +95,10 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             size="lg"
             className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02]"
           >
-            Begin Your Journey
+            Commencer l'aventure
           </Button>
           <p className="mt-4 text-xs text-muted-foreground">
-            Your conversation is private and secure
+            Votre conversation est privée et sécurisée
           </p>
         </motion.div>
       </motion.div>

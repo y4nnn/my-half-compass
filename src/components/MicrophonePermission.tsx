@@ -21,7 +21,7 @@ export function MicrophonePermission({ onPermissionGranted, onBack }: Microphone
       onPermissionGranted();
     } catch (err) {
       console.error("Microphone access denied:", err);
-      setError("Microphone access is required for the voice conversation. Please enable it in your browser settings.");
+      setError("L'accès au microphone est nécessaire pour la conversation vocale. Veuillez l'activer dans les paramètres de votre navigateur.");
     } finally {
       setIsRequesting(false);
     }
@@ -69,11 +69,11 @@ export function MicrophonePermission({ onPermissionGranted, onBack }: Microphone
           transition={{ delay: 0.3 }}
         >
           <h2 className="text-2xl font-display font-bold text-foreground mb-3">
-            Enable Your Microphone
+            Activez votre microphone
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            To have a natural conversation, we'll need access to your microphone. 
-            You'll be speaking with a supportive AI who will listen to your story.
+            Pour avoir une conversation naturelle, nous avons besoin d'accéder à votre microphone. 
+            Vous allez échanger avec Luna, une guide bienveillante qui va écouter votre histoire.
           </p>
         </motion.div>
 
@@ -111,12 +111,12 @@ export function MicrophonePermission({ onPermissionGranted, onBack }: Microphone
                 animate={{ opacity: 1 }}
               >
                 <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                Requesting Access...
+                Demande d'accès...
               </motion.div>
             ) : (
               <>
                 <Mic className="mr-2 w-5 h-5" />
-                Allow Microphone Access
+                Autoriser le microphone
               </>
             )}
           </Button>
@@ -125,7 +125,7 @@ export function MicrophonePermission({ onPermissionGranted, onBack }: Microphone
             variant="ghost"
             className="w-full h-12 text-muted-foreground hover:text-foreground"
           >
-            Go Back
+            Retour
           </Button>
         </motion.div>
 
@@ -139,8 +139,8 @@ export function MicrophonePermission({ onPermissionGranted, onBack }: Microphone
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-accent-foreground flex-shrink-0 mt-0.5" />
             <p className="text-sm text-accent-foreground/80 text-left">
-              <span className="font-medium">Tip:</span> If you see a browser popup, 
-              click "Allow" to enable your microphone. You can disable it anytime from your browser settings.
+              <span className="font-medium">Conseil :</span> Si vous voyez une popup du navigateur, 
+              cliquez sur "Autoriser" pour activer votre microphone. Vous pouvez le désactiver à tout moment.
             </p>
           </div>
         </motion.div>
