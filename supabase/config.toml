@@ -1,8 +1,5 @@
 project_id = "uxwcthnirhznxdtwsrtj"
 
-[functions.elevenlabs-conversation-token]
-verify_jwt = false
-
 [functions.gemini-voice-session]
 verify_jwt = false
 

@@ -28,12 +28,15 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
   
   const wsRef = useRef<WebSocket | null>(null);
   const micRef = useRef<MicrophoneCapture | null>(null);
   const playbackRef = useRef<AudioPlaybackQueue | null>(null);
   const transcriptRef = useRef<TranscriptMessage[]>([]);
   const lastErrorRef = useRef<string | null>(null);
+  const lastLevelUpdateRef = useRef(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -50,6 +53,8 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
     setStatus('connecting');
     transcriptRef.current = [];
     setTranscript([]);
+    setSessionReady(false);
+    setMicLevel(0);
 
     try {
       // Initialize audio playback
@@ -124,14 +129,24 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
               
             case 'connected':
               console.log('Gemini session established');
+              setSessionReady(true);
               // Start microphone capture only after session is ready
               if (!micRef.current) {
                 micRef.current = new MicrophoneCapture();
-                await micRef.current.start((audioBase64) => {
-                  if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: 'audio', data: audioBase64 }));
+                await micRef.current.start(
+                  (audioBase64) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: 'audio', data: audioBase64 }));
+                    }
+                  },
+                  (level) => {
+                    // Throttle UI updates (avoid setState on every audio frame)
+                    const now = performance.now();
+                    if (now - lastLevelUpdateRef.current < 50) return; // ~20fps
+                    lastLevelUpdateRef.current = now;
+                    setMicLevel(level);
                   }
-                });
+                );
                 console.log('Microphone capture started');
               }
               break;
@@ -183,6 +198,8 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
     
     setIsSpeaking(false);
     setIsListening(false);
+    setSessionReady(false);
+    setMicLevel(0);
   }, []);
 
   const disconnect = useCallback(() => {
@@ -204,6 +221,8 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
     status,
     isSpeaking,
     isListening,
+    sessionReady,
+    micLevel,
     transcript,
     getTranscript,
     isConnected: status === 'connected',

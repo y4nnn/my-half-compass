@@ -43,6 +43,7 @@ serve(async (req: Request) => {
   
   let geminiSocket: WebSocket | null = null;
   let isSetupComplete = false;
+  let setupTimeoutId: number | null = null;
 
   clientSocket.onopen = () => {
     console.log("Client connected, establishing Gemini connection...");
@@ -76,6 +77,32 @@ serve(async (req: Request) => {
       console.log("Setup message:", JSON.stringify(setupMessage, null, 2));
       geminiSocket!.send(JSON.stringify(setupMessage));
       console.log("Setup message sent to Gemini, waiting for setupComplete...");
+
+      // If setupComplete never arrives, fail fast with a useful message.
+      setupTimeoutId = setTimeout(() => {
+        if (isSetupComplete) return;
+        console.error("Timed out waiting for setupComplete from Gemini");
+        try {
+          if (clientSocket.readyState === WebSocket.OPEN) {
+            clientSocket.send(JSON.stringify({
+              type: "error",
+              error: "AI session setup timed out (no setupComplete). Check model availability/quota and try again."
+            }));
+          }
+        } catch (_) {
+          // ignore
+        }
+        try {
+          geminiSocket?.close();
+        } catch (_) {
+          // ignore
+        }
+        try {
+          clientSocket.close();
+        } catch (_) {
+          // ignore
+        }
+      }, 8000);
     };
 
     geminiSocket.onmessage = (event) => {
@@ -87,6 +114,32 @@ serve(async (req: Request) => {
         if (data.setupComplete) {
           console.log("✅ Gemini setup complete! Session is ready.");
           isSetupComplete = true;
+
+          if (setupTimeoutId) {
+            clearTimeout(setupTimeoutId);
+            setupTimeoutId = null;
+          }
+
+          // Kick off a first response so the user hears a greeting immediately.
+          // (This avoids the UI being stuck in "listening" with no assistant audio.)
+          try {
+            const kickoff = {
+              clientContent: {
+                turns: [
+                  {
+                    role: "user",
+                    parts: [{ text: "Please greet me warmly and ask your first open-ended question." }],
+                  },
+                ],
+                turnComplete: true,
+              },
+            };
+            console.log("Sending kickoff clientContent...");
+            geminiSocket!.send(JSON.stringify(kickoff));
+          } catch (e) {
+            console.error("Failed to send kickoff clientContent:", e);
+          }
+
           clientSocket.send(JSON.stringify({ type: "connected" }));
           return;
         }
@@ -202,10 +255,12 @@ serve(async (req: Request) => {
         // Forward audio to Gemini
         const realtimeInput = {
           realtimeInput: {
-            audio: {
-              mimeType: "audio/pcm",
-              data: message.data
-            }
+            mediaChunks: [
+              {
+                mimeType: "audio/pcm",
+                data: message.data,
+              },
+            ],
           }
         };
         

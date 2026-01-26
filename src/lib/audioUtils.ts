@@ -173,12 +173,18 @@ export class AudioPlaybackQueue {
 export class MicrophoneCapture {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
-  private workletNode: AudioWorkletNode | null = null;
   private onAudioData?: (base64: string) => void;
+  private onLevel?: (level: number) => void;
   private isCapturing = false;
+  private source: MediaStreamAudioSourceNode | null = null;
+  private processor: ScriptProcessorNode | null = null;
 
-  async start(onAudioData: (base64: string) => void): Promise<void> {
+  async start(
+    onAudioData: (base64: string) => void,
+    onLevel?: (level: number) => void
+  ): Promise<void> {
     this.onAudioData = onAudioData;
+    this.onLevel = onLevel;
     
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ 
@@ -194,21 +200,31 @@ export class MicrophoneCapture {
       this.audioContext = new AudioContext({ sampleRate: 16000 });
       
       // Create a script processor for audio capture (AudioWorklet would be better but requires more setup)
-      const source = this.audioContext.createMediaStreamSource(this.stream);
-      const processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+      this.source = this.audioContext.createMediaStreamSource(this.stream);
+      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
       
-      processor.onaudioprocess = (e) => {
+      this.processor.onaudioprocess = (e) => {
         if (!this.isCapturing) return;
         
         const inputData = e.inputBuffer.getChannelData(0);
+
+        // Simple RMS meter (0..1) for UI feedback
+        let sum = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          const v = inputData[i];
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / inputData.length);
+        this.onLevel?.(rms);
+
         const pcm = float32ToPcm16(inputData);
         const base64 = pcmToBase64(pcm);
         
         this.onAudioData?.(base64);
       };
       
-      source.connect(processor);
-      processor.connect(this.audioContext.destination);
+      this.source.connect(this.processor);
+      this.processor.connect(this.audioContext.destination);
       
       this.isCapturing = true;
     } catch (error) {
@@ -219,6 +235,16 @@ export class MicrophoneCapture {
 
   stop() {
     this.isCapturing = false;
+
+    if (this.source) {
+      try { this.source.disconnect(); } catch (_) {}
+      this.source = null;
+    }
+
+    if (this.processor) {
+      try { this.processor.disconnect(); } catch (_) {}
+      this.processor = null;
+    }
     
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
@@ -229,6 +255,8 @@ export class MicrophoneCapture {
       this.audioContext.close();
       this.audioContext = null;
     }
+
+    this.onLevel = undefined;
   }
 
   getIsCapturing() {
