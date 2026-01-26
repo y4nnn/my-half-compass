@@ -6,7 +6,7 @@ import { VoiceOrb } from "@/components/ui/VoiceOrb";
 import { Pause, Play, X, Volume2 } from "lucide-react";
 
 // Public agent ID for Menacing Green Anaconda
-const ELEVENLABS_AGENT_ID = "t8BrjWUT5Z23DLLBzbuY";
+const ELEVENLABS_AGENT_ID = "agent_9601kfx8tjbcfqc8pakd15qdcejw";
 
 interface VoiceChatProps {
   onComplete: (profileData: any) => void;
