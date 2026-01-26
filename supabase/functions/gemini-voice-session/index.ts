@@ -105,10 +105,24 @@ serve(async (req: Request) => {
       }, 8000);
     };
 
-    geminiSocket.onmessage = (event) => {
+    geminiSocket.onmessage = async (event) => {
       try {
-        const data = JSON.parse(event.data);
-        console.log("Gemini message received:", JSON.stringify(data).slice(0, 500));
+        // In the Edge runtime, event.data can be a string OR a Blob.
+        // If we try to JSON.parse a Blob directly, it becomes "[object Blob]".
+        let rawText = "";
+        const raw = (event as MessageEvent).data as unknown;
+        if (typeof raw === "string") {
+          rawText = raw;
+        } else if (raw instanceof Blob) {
+          rawText = await raw.text();
+        } else if (raw instanceof ArrayBuffer) {
+          rawText = new TextDecoder().decode(raw);
+        } else if (raw && typeof (raw as any).toString === "function") {
+          rawText = (raw as any).toString();
+        }
+
+        const data = JSON.parse(rawText);
+        console.log("Gemini message received:", rawText.slice(0, 500));
         
         // Handle setup complete
         if (data.setupComplete) {
