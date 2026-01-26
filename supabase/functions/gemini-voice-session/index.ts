@@ -147,8 +147,33 @@ serve(async (req: Request) => {
 
     geminiSocket.onclose = (event) => {
       console.log("Gemini WebSocket closed:", event.code, event.reason);
+
+      // Forward a helpful error to the client when Gemini rejects/ends the session.
+      // (Common: quota/billing errors -> 1011)
       if (clientSocket.readyState === WebSocket.OPEN) {
-        clientSocket.close();
+        const reason = (event.reason || "").slice(0, 300);
+        const reasonLower = reason.toLowerCase();
+
+        let friendly = "AI connection closed.";
+        if (event.code === 1011 || reasonLower.includes("quota") || reasonLower.includes("billing") || reasonLower.includes("exceeded")) {
+          friendly = "AI quota/billing issue: this Google AI API key has no available quota (enable billing or increase quota).";
+        } else if (event.code === 1008) {
+          friendly = reason || "AI rejected the session setup (model/config).";
+        } else if (reason) {
+          friendly = reason;
+        }
+
+        try {
+          clientSocket.send(JSON.stringify({ type: "error", error: friendly }));
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          clientSocket.close();
+        } catch (_) {
+          // ignore
+        }
       }
     };
   };
