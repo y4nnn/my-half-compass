@@ -33,6 +33,7 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
   const micRef = useRef<MicrophoneCapture | null>(null);
   const playbackRef = useRef<AudioPlaybackQueue | null>(null);
   const transcriptRef = useRef<TranscriptMessage[]>([]);
+  const lastErrorRef = useRef<string | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -120,6 +121,8 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
               
             case 'error':
               console.error('Gemini error:', message.error);
+              lastErrorRef.current = message.error || 'Unknown error';
+              setStatus('error');
               options.onError?.(message.error || 'Unknown error');
               break;
               
@@ -134,6 +137,7 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        lastErrorRef.current = 'Connection error';
         setStatus('error');
         options.onError?.('Connection error');
       };
@@ -141,8 +145,20 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
       ws.onclose = (event) => {
         console.log('WebSocket closed:', event.code, event.reason);
         cleanup();
-        setStatus('disconnected');
-        options.onDisconnect?.();
+
+        // 1000 = normal closure; 1006 = abnormal closure (often server-side close)
+        const abnormal = event.code !== 1000;
+        if (abnormal) {
+          setStatus('error');
+          if (!lastErrorRef.current) {
+            options.onError?.(event.reason || 'Connection closed unexpectedly');
+          }
+        } else {
+          setStatus('disconnected');
+          options.onDisconnect?.();
+        }
+
+        lastErrorRef.current = null;
       };
 
     } catch (error) {
