@@ -3,9 +3,10 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { PrivacyDisclaimer } from "@/components/PrivacyDisclaimer";
 import { MicrophonePermission } from "@/components/MicrophonePermission";
 import { VoiceChat } from "@/components/VoiceChat";
+import { ProfileReport } from "@/components/ProfileReport";
 import { motion, AnimatePresence } from "framer-motion";
 
-type AppStep = "welcome" | "privacy" | "microphone" | "voiceChat" | "matching" | "chat";
+type AppStep = "welcome" | "privacy" | "microphone" | "voiceChat" | "report" | "matching" | "chat";
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
@@ -13,7 +14,7 @@ const Index = () => {
 
   const handleVoiceChatComplete = (data: any) => {
     setProfileData(data);
-    setCurrentStep("matching");
+    setCurrentStep("report");
   };
 
   return (
@@ -71,6 +72,21 @@ const Index = () => {
           <VoiceChat
             onComplete={handleVoiceChatComplete}
             onExit={() => setCurrentStep("welcome")}
+          />
+        </motion.div>
+      )}
+
+      {currentStep === "report" && (
+        <motion.div
+          key="report"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <ProfileReport
+            profileData={profileData}
+            onFindMatch={() => setCurrentStep("matching")}
           />
         </motion.div>
       )}
