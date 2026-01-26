@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
-const GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview";
+const GEMINI_MODEL = "gemini-2.0-flash-exp";
 const GEMINI_WS_URL = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${GOOGLE_AI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are a warm, empathetic AI guide named Luna, helping someone discover meaningful connections. Your role is to have a natural, supportive conversation about their life experiences to understand who they truly are.
@@ -171,10 +171,10 @@ serve(async (req: Request) => {
         // Forward audio to Gemini
         const realtimeInput = {
           realtimeInput: {
-            mediaChunks: [{
+            audio: {
               mimeType: "audio/pcm;rate=16000",
               data: message.data
-            }]
+            }
           }
         };
         
