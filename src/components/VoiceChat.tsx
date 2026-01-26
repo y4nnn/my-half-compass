@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { VoiceOrb } from "@/components/ui/VoiceOrb";
 import { Pause, Play, X, Volume2 } from "lucide-react";
 
-// Public agent ID - find this in your ElevenLabs dashboard under your agent's settings
-const ELEVENLABS_AGENT_ID = "YOUR_AGENT_ID_HERE"; // Replace with your agent ID from dashboard
+// Public agent ID for Menacing Green Anaconda
+const ELEVENLABS_AGENT_ID = "t8BrjWUT5Z23DLLBzbuY";
 
 interface VoiceChatProps {
   onComplete: (profileData: any) => void;
