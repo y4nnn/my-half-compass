@@ -74,16 +74,12 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
         setIsListening(true);
         options.onConnect?.();
 
-        // Start microphone capture
-        micRef.current = new MicrophoneCapture();
-        await micRef.current.start((audioBase64) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'audio', data: audioBase64 }));
-          }
-        });
+        // IMPORTANT: wait until the backend confirms the Gemini session is ready
+        // (it sends a "connected" message after setupComplete)
+        console.log('Waiting for backend session ready...');
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         try {
           const message: GeminiMessage = JSON.parse(event.data);
           
@@ -128,6 +124,16 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions = {}) {
               
             case 'connected':
               console.log('Gemini session established');
+              // Start microphone capture only after session is ready
+              if (!micRef.current) {
+                micRef.current = new MicrophoneCapture();
+                await micRef.current.start((audioBase64) => {
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'audio', data: audioBase64 }));
+                  }
+                });
+                console.log('Microphone capture started');
+              }
               break;
           }
         } catch (error) {

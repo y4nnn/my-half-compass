@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
-// Use the native audio model that supports real-time voice I/O
-const GEMINI_MODEL = "gemini-2.0-flash-live-001";
+// Native-audio Live model (per Google Live API docs / samples)
+const GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 const GEMINI_WS_URL = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${GOOGLE_AI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are a warm, empathetic AI guide named Luna, helping someone discover meaningful connections. Your role is to have a natural, supportive conversation about their life experiences to understand who they truly are.
@@ -154,22 +154,25 @@ serve(async (req: Request) => {
       // Forward a helpful error to the client when Gemini rejects/ends the session.
       // (Common: quota/billing errors -> 1011)
       if (clientSocket.readyState === WebSocket.OPEN) {
-        const reason = (event.reason || "").slice(0, 300);
-        const reasonLower = reason.toLowerCase();
+        // Don't surface an error on clean shutdown.
+        if (event.code !== 1000) {
+          const reason = (event.reason || "").slice(0, 300);
+          const reasonLower = reason.toLowerCase();
 
-        let friendly = "AI connection closed.";
-        if (event.code === 1011 || reasonLower.includes("quota") || reasonLower.includes("billing") || reasonLower.includes("exceeded")) {
-          friendly = "AI quota/billing issue: this Google AI API key has no available quota (enable billing or increase quota).";
-        } else if (event.code === 1008) {
-          friendly = reason || "AI rejected the session setup (model/config).";
-        } else if (reason) {
-          friendly = reason;
-        }
+          let friendly = "AI connection closed.";
+          if (event.code === 1011 || reasonLower.includes("quota") || reasonLower.includes("billing") || reasonLower.includes("exceeded")) {
+            friendly = "AI quota/billing issue: this Google AI API key has no available quota (enable billing or increase quota).";
+          } else if (event.code === 1008) {
+            friendly = reason || "AI rejected the session setup (model/config).";
+          } else if (reason) {
+            friendly = reason;
+          }
 
-        try {
-          clientSocket.send(JSON.stringify({ type: "error", error: friendly }));
-        } catch (_) {
-          // ignore
+          try {
+            clientSocket.send(JSON.stringify({ type: "error", error: friendly }));
+          } catch (_) {
+            // ignore
+          }
         }
 
         try {
@@ -200,7 +203,7 @@ serve(async (req: Request) => {
         const realtimeInput = {
           realtimeInput: {
             audio: {
-              mimeType: "audio/pcm;rate=16000",
+              mimeType: "audio/pcm",
               data: message.data
             }
           }
