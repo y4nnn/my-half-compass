@@ -4,7 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { VoiceOrb } from "@/components/ui/VoiceOrb";
 import { Pause, Play, X, Volume2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
+// Public agent ID - find this in your ElevenLabs dashboard under your agent's settings
+const ELEVENLABS_AGENT_ID = "YOUR_AGENT_ID_HERE"; // Replace with your agent ID from dashboard
 
 interface VoiceChatProps {
   onComplete: (profileData: any) => void;
@@ -47,16 +49,9 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Get conversation token from edge function
-      const { data, error } = await supabase.functions.invoke("elevenlabs-conversation-token");
-
-      if (error || !data?.token) {
-        throw new Error(error?.message || "Failed to get conversation token");
-      }
-
-      // Start the conversation with WebRTC
+      // Start the conversation with public agent (no API key needed)
       await conversation.startSession({
-        conversationToken: data.token,
+        agentId: ELEVENLABS_AGENT_ID,
         connectionType: "webrtc",
       });
     } catch (error) {
