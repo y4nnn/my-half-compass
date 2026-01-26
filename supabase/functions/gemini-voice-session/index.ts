@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
-const GEMINI_MODEL = "gemini-2.0-flash-exp";
+// Use the native audio model that supports real-time voice I/O
+const GEMINI_MODEL = "gemini-2.0-flash-live-001";
 const GEMINI_WS_URL = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${GOOGLE_AI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are a warm, empathetic AI guide named Luna, helping someone discover meaningful connections. Your role is to have a natural, supportive conversation about their life experiences to understand who they truly are.
@@ -50,9 +51,9 @@ serve(async (req: Request) => {
     geminiSocket = new WebSocket(GEMINI_WS_URL);
     
     geminiSocket.onopen = () => {
-      console.log("Connected to Gemini Live API");
+      console.log("Connected to Gemini Live API, sending setup...");
       
-      // Send setup message
+      // Send setup message with correct structure for Live API
       const setupMessage = {
         setup: {
           model: `models/${GEMINI_MODEL}`,
@@ -72,17 +73,19 @@ serve(async (req: Request) => {
         }
       };
       
+      console.log("Setup message:", JSON.stringify(setupMessage, null, 2));
       geminiSocket!.send(JSON.stringify(setupMessage));
-      console.log("Setup message sent to Gemini");
+      console.log("Setup message sent to Gemini, waiting for setupComplete...");
     };
 
     geminiSocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("Gemini message received:", JSON.stringify(data).slice(0, 500));
         
         // Handle setup complete
         if (data.setupComplete) {
-          console.log("Gemini setup complete");
+          console.log("✅ Gemini setup complete! Session is ready.");
           isSetupComplete = true;
           clientSocket.send(JSON.stringify({ type: "connected" }));
           return;
