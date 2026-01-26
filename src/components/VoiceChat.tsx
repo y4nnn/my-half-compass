@@ -23,6 +23,8 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
     status,
     isSpeaking,
     isListening,
+    sessionReady,
+    micLevel,
     transcript,
     getTranscript,
     isConnected,
@@ -30,7 +32,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
   } = useGeminiVoice({
     onConnect: () => {
       console.log("Connected to Gemini voice session");
-      setStatusMessage("Connected - I'm listening");
+      setStatusMessage("Connected - preparing your guide...");
     },
     onDisconnect: () => {
       console.log("Disconnected from Gemini voice session");
@@ -119,6 +121,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
   const getStatusText = () => {
     if (isAnalyzing) return "Analyzing your conversation...";
     if (isConnecting) return "Connecting...";
+    if (isConnected && !sessionReady) return "Preparing session...";
     if (isSpeaking) return "Speaking to you...";
     if (isConnected && isListening) return "Listening...";
     if (isConnected) return "Connected";
@@ -194,6 +197,34 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
               {getStatusText()}
             </motion.p>
           </AnimatePresence>
+
+          {/* Readiness + Mic meter */}
+          {isConnected && (
+            <div className="mt-4 mx-auto w-full max-w-sm rounded-xl bg-card/40 backdrop-blur-sm border border-border/30 px-4 py-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Session</span>
+                <span className={sessionReady ? "text-primary" : "text-muted-foreground"}>
+                  {sessionReady ? "Ready" : "Starting"}
+                </span>
+              </div>
+
+              <div className="mt-2 flex items-center gap-3">
+                <span className="text-xs text-muted-foreground">Mic</span>
+                <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-75"
+                    style={{ width: `${Math.min(100, Math.max(0, micLevel * 140))}%` }}
+                  />
+                </div>
+              </div>
+
+              {!sessionReady && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Waiting for the AI to finish setup…
+                </p>
+              )}
+            </div>
+          )}
         </motion.div>
 
         {/* Live Transcript Preview */}
