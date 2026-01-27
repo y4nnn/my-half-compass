@@ -1,23 +1,25 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { 
-  ArrowRight, 
-  User, 
-  Brain, 
-  Heart, 
-  Target, 
-  Sparkles, 
+import {
+  ArrowRight,
+  User,
+  Brain,
+  Heart,
+  Target,
+  Sparkles,
   MessageCircle,
   Compass,
   Shield,
   Star,
-  ChevronDown
+  ChevronDown,
+  Mic
 } from "lucide-react";
 import { useState } from "react";
 
 interface ProfileReportProps {
   profileData: any;
   onFindMatch: () => void;
+  onTalkToLuna: () => void;
 }
 
 interface TraitScoreProps {
@@ -121,21 +123,29 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
   );
 }
 
-export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) {
+export function ProfileReport({ profileData, onFindMatch, onTalkToLuna }: ProfileReportProps) {
+  // Map the analyze-profile structure to display fields
   const {
-    personalBackground,
+    basicInfo,
+    identityAndSelfConcept,
+    temperament,
+    emotionRegulation,
+    cognitiveStyle,
+    motivation,
     personalityTraits,
-    lifeExperiences,
-    valuesAndBeliefs,
-    relationshipStyle,
-    goalsAndAspirations,
-    interestsAndHobbies,
-    dealBreakersAndMustHaves,
-    communicationStyle,
-    emotionalProfile,
+    interpersonalStyle,
+    socialCognition,
+    behavioralPatterns,
+    strengthsAndProtectiveFactors,
+    vulnerabilities,
+    developmentalFactors,
+    relationshipProfile,
     overallSummary,
+    keyInsights,
     matchingKeywords,
-    compatibilityFactors
+    compatibilityFactors,
+    dimensionsCovered,
+    dimensionsToExplore
   } = profileData || {};
 
   return (
@@ -187,243 +197,281 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
           </motion.div>
         )}
 
-        {/* Personal Background */}
-        {personalBackground && (
+        {/* Basic Info */}
+        {basicInfo && (
           <SectionCard icon={User} title="Informations personnelles" defaultOpen>
             <div className="space-y-0">
-              <InfoRow label="Âge" value={personalBackground.ageRange} />
-              <InfoRow label="Localisation" value={personalBackground.location} />
-              <InfoRow label="Profession" value={personalBackground.occupation} />
-              <InfoRow label="Études" value={personalBackground.education} />
-              <InfoRow label="Situation" value={personalBackground.livingSituation} />
+              <InfoRow label="Prénom" value={basicInfo.name} />
+              <InfoRow label="Âge" value={basicInfo.ageRange} />
+              <InfoRow label="Localisation" value={basicInfo.location} />
+              <InfoRow label="Profession" value={basicInfo.occupation} />
+              <InfoRow label="Situation" value={basicInfo.livingSituation} />
             </div>
           </SectionCard>
         )}
 
-        {/* Personality Traits */}
+        {/* Personality Traits (Big Five) */}
         {personalityTraits && (
-          <SectionCard icon={Brain} title="Traits de personnalité" defaultOpen>
+          <SectionCard icon={Brain} title="Traits de personnalité (Big Five)" defaultOpen>
             <div className="space-y-4">
               {personalityTraits.openness && (
-                <TraitScore 
-                  label="Ouverture d'esprit" 
-                  score={personalityTraits.openness.score} 
+                <TraitScore
+                  label="Ouverture d'esprit"
+                  score={personalityTraits.openness.score}
                   explanation={personalityTraits.openness.explanation}
                 />
               )}
               {personalityTraits.conscientiousness && (
-                <TraitScore 
-                  label="Conscience" 
+                <TraitScore
+                  label="Conscienciosité"
                   score={personalityTraits.conscientiousness.score}
                   explanation={personalityTraits.conscientiousness.explanation}
                 />
               )}
               {personalityTraits.extraversion && (
-                <TraitScore 
-                  label="Extraversion" 
+                <TraitScore
+                  label="Extraversion"
                   score={personalityTraits.extraversion.score}
                   explanation={personalityTraits.extraversion.explanation}
                 />
               )}
               {personalityTraits.agreeableness && (
-                <TraitScore 
-                  label="Agréabilité" 
+                <TraitScore
+                  label="Agréabilité"
                   score={personalityTraits.agreeableness.score}
                   explanation={personalityTraits.agreeableness.explanation}
                 />
               )}
-              {personalityTraits.emotionalStability && (
-                <TraitScore 
-                  label="Stabilité émotionnelle" 
-                  score={personalityTraits.emotionalStability.score}
-                  explanation={personalityTraits.emotionalStability.explanation}
+              {personalityTraits.neuroticism && (
+                <TraitScore
+                  label="Névrosisme"
+                  score={personalityTraits.neuroticism.score}
+                  explanation={personalityTraits.neuroticism.explanation}
                 />
               )}
+              {personalityTraits.honestyHumility && (
+                <div className="pt-2 border-t border-border/30">
+                  <InfoRow label="Honnêteté-Humilité" value={personalityTraits.honestyHumility} />
+                </div>
+              )}
+              {personalityTraits.assertivenessStyle && (
+                <InfoRow label="Style d'assertivité" value={personalityTraits.assertivenessStyle} />
+              )}
             </div>
           </SectionCard>
         )}
 
-        {/* Relationship Style */}
-        {relationshipStyle && (
-          <SectionCard icon={Heart} title="Style relationnel">
+        {/* Interpersonal Style */}
+        {interpersonalStyle && (
+          <SectionCard icon={Heart} title="Style interpersonnel & attachement">
             <div className="space-y-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Style d'attachement</p>
-                <span className="inline-block px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-sm font-medium">
-                  {relationshipStyle.attachmentStyle || "Non déterminé"}
-                </span>
-              </div>
-              
-              {relationshipStyle.loveLanguages && relationshipStyle.loveLanguages.length > 0 && (
+              {interpersonalStyle.attachmentPattern && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Pattern d'attachement</p>
+                  <span className="inline-block px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-sm font-medium">
+                    {interpersonalStyle.attachmentPattern}
+                  </span>
+                </div>
+              )}
+              <InfoRow label="Style de confiance" value={interpersonalStyle.trustStyle} />
+              <InfoRow label="Communication" value={interpersonalStyle.communicationStyle} />
+              <InfoRow label="Gestion des conflits" value={interpersonalStyle.conflictStyle} />
+              <InfoRow label="Limites personnelles" value={interpersonalStyle.boundaryQuality} />
+              <InfoRow label="Empathie" value={interpersonalStyle.empathyAndMentalization} />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Relationship Profile */}
+        {relationshipProfile && (
+          <SectionCard icon={Heart} title="Profil relationnel">
+            <div className="space-y-4">
+              {relationshipProfile.loveLanguages && relationshipProfile.loveLanguages.length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Langages de l'amour</p>
-                  <TagList items={relationshipStyle.loveLanguages} />
+                  <TagList items={relationshipProfile.loveLanguages} />
                 </div>
               )}
-              
-              {relationshipStyle.pastPatterns && (
+              {relationshipProfile.idealPartnerQualities && relationshipProfile.idealPartnerQualities.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Patterns relationnels</p>
-                  <p className="text-sm text-foreground">{relationshipStyle.pastPatterns}</p>
+                  <p className="text-xs text-muted-foreground mb-2">Qualités recherchées chez un partenaire</p>
+                  <TagList items={relationshipProfile.idealPartnerQualities} />
                 </div>
               )}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Values & Beliefs */}
-        {valuesAndBeliefs && (
-          <SectionCard icon={Compass} title="Valeurs & Croyances">
-            <div className="space-y-4">
-              {valuesAndBeliefs.coreValues && valuesAndBeliefs.coreValues.length > 0 && (
+              {relationshipProfile.dealBreakers && relationshipProfile.dealBreakers.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Valeurs fondamentales</p>
-                  <TagList items={valuesAndBeliefs.coreValues} />
+                  <p className="text-xs text-muted-foreground mb-2">Rédhibitoires</p>
+                  <TagList items={relationshipProfile.dealBreakers} />
                 </div>
               )}
-              
-              {valuesAndBeliefs.lifePhilosophy && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Philosophie de vie</p>
-                  <p className="text-sm text-foreground">{valuesAndBeliefs.lifePhilosophy}</p>
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Goals & Aspirations */}
-        {goalsAndAspirations && (
-          <SectionCard icon={Target} title="Objectifs & Aspirations">
-            <div className="space-y-4">
-              {goalsAndAspirations.shortTermGoals && goalsAndAspirations.shortTermGoals.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Objectifs court terme</p>
-                  <ul className="space-y-1">
-                    {goalsAndAspirations.shortTermGoals.map((goal: string, idx: number) => (
-                      <li key={idx} className="text-sm text-foreground flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        {goal}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {goalsAndAspirations.longTermVision && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Vision long terme</p>
-                  <p className="text-sm text-foreground">{goalsAndAspirations.longTermVision}</p>
-                </div>
-              )}
-              
-              {goalsAndAspirations.relationshipGoals && (
+              {relationshipProfile.relationshipGoals && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Objectifs relationnels</p>
-                  <p className="text-sm text-foreground">{goalsAndAspirations.relationshipGoals}</p>
+                  <p className="text-sm text-foreground">{relationshipProfile.relationshipGoals}</p>
+                </div>
+              )}
+              {relationshipProfile.pastRelationshipPatterns && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Patterns passés</p>
+                  <p className="text-sm text-foreground">{relationshipProfile.pastRelationshipPatterns}</p>
                 </div>
               )}
             </div>
           </SectionCard>
         )}
 
-        {/* Interests & Hobbies */}
-        {interestsAndHobbies && (
-          <SectionCard icon={Star} title="Intérêts & Loisirs">
-            <div className="space-y-4">
-              {interestsAndHobbies.activeHobbies && interestsAndHobbies.activeHobbies.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Hobbies actifs</p>
-                  <TagList items={interestsAndHobbies.activeHobbies} />
-                </div>
-              )}
-              
-              {interestsAndHobbies.passiveInterests && interestsAndHobbies.passiveInterests.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Intérêts</p>
-                  <TagList items={interestsAndHobbies.passiveInterests} />
-                </div>
-              )}
-              
-              {interestsAndHobbies.socialActivities && interestsAndHobbies.socialActivities.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Activités sociales</p>
-                  <TagList items={interestsAndHobbies.socialActivities} />
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Communication Style */}
-        {communicationStyle && (
-          <SectionCard icon={MessageCircle} title="Style de communication">
+        {/* Identity & Self-Concept */}
+        {identityAndSelfConcept && (
+          <SectionCard icon={Compass} title="Identité & Concept de soi">
             <div className="space-y-3">
-              <InfoRow label="Expression" value={communicationStyle.expressionStyle} />
-              <InfoRow label="Expressivité émotionnelle" value={communicationStyle.emotionalExpressiveness} />
-              <InfoRow label="Gestion des conflits" value={communicationStyle.conflictResolution} />
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Deal Breakers */}
-        {dealBreakersAndMustHaves && (
-          <SectionCard icon={Shield} title="Critères de matching">
-            <div className="space-y-4">
-              {dealBreakersAndMustHaves.idealPartnerQualities && dealBreakersAndMustHaves.idealPartnerQualities.length > 0 && (
+              <InfoRow label="Estime de soi" value={identityAndSelfConcept.selfEsteemStability} />
+              <InfoRow label="Cohérence identitaire" value={identityAndSelfConcept.identityCoherence} />
+              <InfoRow label="Sentiment d'efficacité" value={identityAndSelfConcept.selfEfficacy} />
+              <InfoRow label="Locus de contrôle" value={identityAndSelfConcept.locusOfControl} />
+              <InfoRow label="Mentalité" value={identityAndSelfConcept.growthMindset} />
+              {identityAndSelfConcept.coreValues && identityAndSelfConcept.coreValues.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Qualités recherchées</p>
-                  <TagList items={dealBreakersAndMustHaves.idealPartnerQualities} />
+                  <p className="text-xs text-muted-foreground mb-2">Valeurs fondamentales</p>
+                  <TagList items={identityAndSelfConcept.coreValues} />
                 </div>
               )}
-              
-              {dealBreakersAndMustHaves.nonNegotiables && dealBreakersAndMustHaves.nonNegotiables.length > 0 && (
+              {identityAndSelfConcept.meaningSource && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Non-négociables</p>
-                  <TagList items={dealBreakersAndMustHaves.nonNegotiables} />
+                  <p className="text-xs text-muted-foreground mb-2">Sources de sens</p>
+                  <p className="text-sm text-foreground">{identityAndSelfConcept.meaningSource}</p>
                 </div>
               )}
             </div>
           </SectionCard>
         )}
 
-        {/* Emotional Profile */}
-        {emotionalProfile && (
-          <SectionCard icon={Heart} title="Profil émotionnel">
-            <div className="space-y-4">
-              {emotionalProfile.currentState && (
+        {/* Motivation */}
+        {motivation && (
+          <SectionCard icon={Target} title="Motivation & Objectifs">
+            <div className="space-y-3">
+              <InfoRow label="Approche vs Évitement" value={motivation.approachVsAvoidance} />
+              <InfoRow label="Motivation" value={motivation.intrinsicVsExtrinsic} />
+              <InfoRow label="Horizon temporel" value={motivation.timeHorizon} />
+              <InfoRow label="Persévérance (Grit)" value={motivation.grit} />
+              <InfoRow label="Style d'accomplissement" value={motivation.achievementStyle} />
+              <InfoRow label="Tolérance au risque" value={motivation.riskTolerance} />
+              {motivation.procrastinationType && (
+                <InfoRow label="Procrastination" value={motivation.procrastinationType} />
+              )}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Temperament */}
+        {temperament && (
+          <SectionCard icon={Star} title="Tempérament & Réactivité">
+            <div className="space-y-3">
+              <InfoRow label="Intensité émotionnelle" value={temperament.emotionalIntensity} />
+              <InfoRow label="Stabilité de l'humeur" value={temperament.emotionalLability} />
+              <InfoRow label="Sensibilité à la menace" value={temperament.threatSensitivity} />
+              <InfoRow label="Sensibilité à la récompense" value={temperament.rewardSensitivity} />
+              <InfoRow label="Réactivité au stress" value={temperament.stressReactivity} />
+              <InfoRow label="Niveau d'activation de base" value={temperament.baselineArousal} />
+              <InfoRow label="Tolérance à la frustration" value={temperament.frustrationTolerance} />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Emotion Regulation */}
+        {emotionRegulation && (
+          <SectionCard icon={MessageCircle} title="Régulation émotionnelle">
+            <div className="space-y-3">
+              <InfoRow label="Conscience émotionnelle" value={emotionRegulation.emotionalAwareness} />
+              <InfoRow label="Contrôle des impulsions" value={emotionRegulation.impulseControl} />
+              <InfoRow label="Orientation coping" value={emotionRegulation.copingOrientation} />
+              <InfoRow label="Résilience" value={emotionRegulation.resilience} />
+              {emotionRegulation.adaptiveStrategies && emotionRegulation.adaptiveStrategies.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">État actuel</p>
-                  <p className="text-sm text-foreground">{emotionalProfile.currentState}</p>
+                  <p className="text-xs text-muted-foreground mb-2">Stratégies adaptatives</p>
+                  <TagList items={emotionRegulation.adaptiveStrategies} />
                 </div>
               )}
-              
-              {emotionalProfile.copingMechanisms && emotionalProfile.copingMechanisms.length > 0 && (
+              {emotionRegulation.maladaptiveStrategies && emotionRegulation.maladaptiveStrategies.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Mécanismes d'adaptation</p>
-                  <TagList items={emotionalProfile.copingMechanisms} />
+                  <p className="text-xs text-muted-foreground mb-2">Stratégies à améliorer</p>
+                  <TagList items={emotionRegulation.maladaptiveStrategies} />
                 </div>
               )}
-              
-              {emotionalProfile.emotionalIntelligence && (
+              {emotionRegulation.defenseMechanisms && emotionRegulation.defenseMechanisms.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Intelligence émotionnelle</p>
-                  <p className="text-sm text-foreground">{emotionalProfile.emotionalIntelligence}</p>
+                  <p className="text-xs text-muted-foreground mb-2">Mécanismes de défense</p>
+                  <TagList items={emotionRegulation.defenseMechanisms} />
                 </div>
               )}
             </div>
           </SectionCard>
         )}
 
-        {/* Life Experiences */}
-        {lifeExperiences && (
-          <SectionCard icon={Sparkles} title="Expériences de vie">
-            <div className="space-y-4">
-              {lifeExperiences.keyEvents && lifeExperiences.keyEvents.length > 0 && (
+        {/* Cognitive Style */}
+        {cognitiveStyle && (
+          <SectionCard icon={Brain} title="Style cognitif">
+            <div className="space-y-3">
+              <InfoRow label="Analytique vs Intuitif" value={cognitiveStyle.analyticalVsIntuitive} />
+              <InfoRow label="Tolérance à la complexité" value={cognitiveStyle.complexityTolerance} />
+              <InfoRow label="Flexibilité cognitive" value={cognitiveStyle.cognitiveFlexibility} />
+              <InfoRow label="Métacognition" value={cognitiveStyle.metacognition} />
+              <InfoRow label="Curiosité" value={cognitiveStyle.curiosityAndHumility} />
+              {cognitiveStyle.cognitiveDistortions && cognitiveStyle.cognitiveDistortions.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Événements marquants</p>
+                  <p className="text-xs text-muted-foreground mb-2">Biais cognitifs tendanciels</p>
+                  <TagList items={cognitiveStyle.cognitiveDistortions} />
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Social Cognition */}
+        {socialCognition && (
+          <SectionCard icon={Shield} title="Vision du monde">
+            <div className="space-y-3">
+              <InfoRow label="Croyances sur les gens" value={socialCognition.beliefsAboutPeople} />
+              <InfoRow label="Sensibilité à la justice" value={socialCognition.justiceSensitivity} />
+              <InfoRow label="Cynisme vs Idéalisme" value={socialCognition.cynicismVsIdealism} />
+              <InfoRow label="Tolérance à la différence" value={socialCognition.toleranceForDifference} />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Strengths & Protective Factors */}
+        {strengthsAndProtectiveFactors && (
+          <SectionCard icon={Star} title="Forces & Facteurs protecteurs">
+            <div className="space-y-4">
+              {strengthsAndProtectiveFactors.characterStrengths && strengthsAndProtectiveFactors.characterStrengths.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Forces de caractère</p>
+                  <TagList items={strengthsAndProtectiveFactors.characterStrengths} />
+                </div>
+              )}
+              <InfoRow label="Supports sociaux" value={strengthsAndProtectiveFactors.socialSupports} />
+              {strengthsAndProtectiveFactors.skillsRepertoire && strengthsAndProtectiveFactors.skillsRepertoire.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Compétences</p>
+                  <TagList items={strengthsAndProtectiveFactors.skillsRepertoire} />
+                </div>
+              )}
+              <InfoRow label="Systèmes de sens" value={strengthsAndProtectiveFactors.meaningSystems} />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Developmental Factors */}
+        {developmentalFactors && (
+          <SectionCard icon={Sparkles} title="Contexte & Développement">
+            <div className="space-y-4">
+              <InfoRow label="Environnement précoce" value={developmentalFactors.earlyEnvironment} />
+              <InfoRow label="Contexte culturel" value={developmentalFactors.culturalContext} />
+              <InfoRow label="Environnement actuel" value={developmentalFactors.currentEnvironment} />
+              {developmentalFactors.lifeEvents && developmentalFactors.lifeEvents.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Événements de vie marquants</p>
                   <ul className="space-y-2">
-                    {lifeExperiences.keyEvents.map((event: string, idx: number) => (
+                    {developmentalFactors.lifeEvents.map((event: string, idx: number) => (
                       <li key={idx} className="text-sm text-foreground flex items-start gap-2">
                         <span className="text-primary mt-1">•</span>
                         {event}
@@ -432,22 +480,39 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
                   </ul>
                 </div>
               )}
-              
-              {lifeExperiences.challengesOvercome && lifeExperiences.challengesOvercome.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Défis surmontés</p>
-                  <ul className="space-y-2">
-                    {lifeExperiences.challengesOvercome.map((challenge: string, idx: number) => (
-                      <li key={idx} className="text-sm text-foreground flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        {challenge}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           </SectionCard>
+        )}
+
+        {/* Key Insights */}
+        {keyInsights && keyInsights.length > 0 && (
+          <motion.div
+            className="p-4 rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h3 className="text-sm font-semibold text-muted-foreground mb-3">Insights clés</h3>
+            <ul className="space-y-2">
+              {keyInsights.map((insight: string, idx: number) => (
+                <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+                  <span className="text-primary mt-1">•</span>
+                  {insight}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {/* Dimensions to explore */}
+        {dimensionsToExplore && dimensionsToExplore.length > 0 && (
+          <motion.div
+            className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h3 className="text-sm font-semibold text-amber-600 mb-3">À explorer lors des prochaines sessions</h3>
+            <TagList items={dimensionsToExplore} />
+          </motion.div>
         )}
 
         {/* Compatibility Factors */}
@@ -470,14 +535,26 @@ export function ProfileReport({ profileData, onFindMatch }: ProfileReportProps) 
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
-        <Button
-          onClick={onFindMatch}
-          size="lg"
-          className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02]"
-        >
-          Trouver mon match
-          <ArrowRight className="w-5 h-5 ml-2" />
-        </Button>
+        <div className="space-y-3">
+          <Button
+            onClick={onTalkToLuna}
+            size="lg"
+            className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02]"
+          >
+            <Mic className="w-5 h-5 mr-2" />
+            Parler à Luna
+          </Button>
+          {/* Matching button disabled for now - will be enabled later */}
+          {/* <Button
+            onClick={onFindMatch}
+            size="lg"
+            variant="outline"
+            className="w-full h-12 text-base rounded-2xl font-semibold"
+          >
+            Trouver mon match
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button> */}
+        </div>
       </motion.div>
     </div>
   );

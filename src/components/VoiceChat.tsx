@@ -2,21 +2,29 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { VoiceOrb } from "@/components/ui/VoiceOrb";
-import { Pause, Play, X, Volume2, Loader2 } from "lucide-react";
+import { Pause, Play, X, Volume2, Loader2, Sparkles, Zap, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useGeminiVoice, TranscriptMessage } from "@/hooks/useGeminiVoice";
+import { useVoice, VoiceProvider, TranscriptMessage, getDefaultProvider, GrokVoiceOption } from "@/hooks/useVoice";
+import { GROK_VOICES } from "@/hooks/useGrokVoice";
 
 interface VoiceChatProps {
+  userId: string;
   onComplete: (profileData: any) => void;
   onExit: () => void;
 }
 
-export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
+export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Prêt·e à commencer");
-  
+  const [selectedProvider, setSelectedProvider] = useState<VoiceProvider | null>(null);
+  const [selectedGrokVoice, setSelectedGrokVoice] = useState<GrokVoiceOption | null>(null);
+  const [showVoiceSelection, setShowVoiceSelection] = useState(false);
+
+  // Use the unified voice hook with selected provider
+  const activeProvider = selectedProvider || getDefaultProvider();
+
   const {
     connect,
     disconnect,
@@ -29,19 +37,34 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
     getTranscript,
     isConnected,
     isConnecting,
-  } = useGeminiVoice({
+    provider,
+  } = useVoice({
+    provider: activeProvider,
+    userId,
+    grokVoice: selectedGrokVoice || undefined,
     onConnect: () => {
-      console.log("Connected to Gemini voice session");
+      console.log(`Connected to ${activeProvider} voice session`);
       setStatusMessage("Connecté - préparation de votre guide...");
     },
     onDisconnect: () => {
-      console.log("Disconnected from Gemini voice session");
+      console.log(`Disconnected from ${activeProvider} voice session`);
       setStatusMessage("Session terminée");
     },
     onError: (error) => {
-      console.error("Gemini voice error:", error);
-      setStatusMessage("Erreur de connexion - veuillez réessayer");
-      toast.error(error);
+      console.error(`${activeProvider} voice error:`, error);
+      // Parse error for user-friendly message
+      let userMessage = "Erreur de connexion - veuillez réessayer";
+      if (error.toLowerCase().includes('not implemented') || error.toLowerCase().includes('unimplemented')) {
+        userMessage = "Fonctionnalité API non disponible - vérifiez votre clé API";
+      } else if (error.toLowerCase().includes('quota') || error.toLowerCase().includes('billing')) {
+        userMessage = "Quota API dépassé - vérifiez votre facturation";
+      } else if (error.toLowerCase().includes('invalid') || error.toLowerCase().includes('api key')) {
+        userMessage = "Clé API invalide - vérifiez votre configuration";
+      } else if (error.toLowerCase().includes('timeout')) {
+        userMessage = "Connexion expirée - veuillez réessayer";
+      }
+      setStatusMessage(userMessage);
+      toast.error(userMessage);
     },
     onTranscript: (message) => {
       console.log("Transcript:", message);
@@ -119,6 +142,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
 
   const getStatusText = () => {
     if (isAnalyzing) return "Analyse de votre conversation...";
+    if (isConnecting && transcript.length > 0) return "Reconnexion en cours...";
     if (isConnecting) return "Connexion...";
     if (isConnected && !sessionReady) return "Préparation de la session...";
     if (isSpeaking) return "Luna vous parle...";
@@ -126,6 +150,157 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
     if (isConnected) return "Connecté";
     return statusMessage;
   };
+
+  // Voice selection screen for Grok
+  if (showVoiceSelection) {
+    return (
+      <div className="min-h-screen flex flex-col bg-warm-gradient">
+        <motion.header
+          className="flex items-center justify-between p-4"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowVoiceSelection(false)}
+            className="rounded-full w-10 h-10"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <div className="w-10" />
+          <div className="w-10" />
+        </motion.header>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <motion.div
+            className="text-center mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h2 className="text-2xl font-bold mb-2">Choisissez une voix</h2>
+            <p className="text-muted-foreground">
+              Sélectionnez la voix de Luna pour Grok
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="w-full max-w-sm space-y-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {GROK_VOICES.map((voice) => (
+              <Button
+                key={voice.id}
+                onClick={() => {
+                  setSelectedGrokVoice(voice.id);
+                  setSelectedProvider('grok');
+                  setShowVoiceSelection(false);
+                }}
+                variant="outline"
+                className="w-full h-16 rounded-2xl flex items-center justify-start px-6 gap-4 hover:bg-primary/10 hover:border-primary transition-all"
+              >
+                <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-sm font-medium text-orange-500">
+                  {voice.gender === 'Femme' ? '♀' : voice.gender === 'Homme' ? '♂' : '○'}
+                </div>
+                <div className="text-left flex-1">
+                  <div className="font-semibold">{voice.name}</div>
+                  <div className="text-xs text-muted-foreground">{voice.description}</div>
+                </div>
+                <span className="text-xs text-muted-foreground">{voice.gender}</span>
+              </Button>
+            ))}
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Provider selection screen
+  if (!selectedProvider) {
+    return (
+      <div className="min-h-screen flex flex-col bg-warm-gradient">
+        <motion.header
+          className="flex items-center justify-between p-4"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onExit}
+            className="rounded-full w-10 h-10"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+          <div className="w-10" />
+          <div className="w-10" />
+        </motion.header>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <motion.div
+            className="text-center mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h2 className="text-2xl font-bold mb-2">Choisissez votre IA</h2>
+            <p className="text-muted-foreground">
+              Sélectionnez le modèle pour votre conversation avec Luna
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="w-full max-w-sm space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Button
+              onClick={() => setSelectedProvider('gemini')}
+              variant="outline"
+              className="w-full h-20 rounded-2xl flex items-center justify-start px-6 gap-4 hover:bg-primary/10 hover:border-primary transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-blue-500" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Gemini</div>
+                <div className="text-sm text-muted-foreground">Google AI - Recommandé</div>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => setShowVoiceSelection(true)}
+              variant="outline"
+              className="w-full h-20 rounded-2xl flex items-center justify-start px-6 gap-4 hover:bg-primary/10 hover:border-primary transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-orange-500" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Grok</div>
+                <div className="text-sm text-muted-foreground">xAI - Choisir une voix</div>
+              </div>
+            </Button>
+          </motion.div>
+
+          <motion.p
+            className="text-center text-xs text-muted-foreground mt-8 max-w-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            Les deux modèles offrent une expérience vocale en temps réel. Grok peut être plus adapté pour les sujets sensibles.
+          </motion.p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-warm-gradient">
@@ -148,7 +323,9 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
 
         <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/60 backdrop-blur-sm border border-border/50">
           <Volume2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Session vocale</span>
+          <span className="text-sm text-muted-foreground">
+            {provider === 'grok' ? `Grok (${selectedGrokVoice || 'Ara'})` : 'Gemini'}
+          </span>
         </div>
 
         <div className="w-10" /> {/* Spacer for alignment */}
@@ -226,7 +403,7 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
           )}
         </motion.div>
 
-        {/* Live Transcript Preview */}
+{/* Live Transcript Preview */}
         {isConnected && transcript.length > 0 && (
           <motion.div
             className="w-full max-w-md mb-4 p-4 rounded-xl bg-card/40 backdrop-blur-sm border border-border/30 max-h-32 overflow-y-auto"
@@ -234,8 +411,8 @@ export function VoiceChat({ onComplete, onExit }: VoiceChatProps) {
             animate={{ opacity: 1, y: 0 }}
           >
             {transcript.slice(-3).map((msg, idx) => (
-              <p 
-                key={idx} 
+              <p
+                key={idx}
                 className={`text-sm mb-1 ${msg.role === "user" ? "text-primary" : "text-muted-foreground"}`}
               >
                 <span className="font-medium">{msg.role === "user" ? "Vous" : "Luna"}:</span> {msg.content}

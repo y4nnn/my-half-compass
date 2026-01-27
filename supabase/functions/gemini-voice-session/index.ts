@@ -162,6 +162,20 @@ serve(async (req: Request) => {
               }
             }
           },
+          realtimeInputConfig: {
+            // Enable automatic voice activity detection for natural turn-taking
+            automaticActivityDetection: {
+              disabled: false,
+              // Start of speech detection - lower = more sensitive to interruptions
+              startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
+              // End of speech detection - how long to wait before considering turn complete
+              endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
+              // Prefix padding: audio to include before speech is detected (ms)
+              prefixPaddingMs: 100,
+              // Silence duration before ending turn (ms) - shorter = faster response
+              silenceDurationMs: 500
+            }
+          },
           systemInstruction: {
             parts: [{ text: SYSTEM_PROMPT }]
           }

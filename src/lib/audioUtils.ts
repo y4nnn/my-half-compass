@@ -74,8 +74,12 @@ export class AudioPlaybackQueue {
   private queue: AudioBuffer[] = [];
   private isPlaying = false;
   private nextStartTime = 0;
-  private currentSource: AudioBufferSourceNode | null = null;
+  // Track ALL active/scheduled sources so we can stop them all on clear
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
   private onPlaybackEnd?: () => void;
+  // Collect audio for transcription
+  private currentUtteranceAudio: Int16Array[] = [];
+  private onTranscript?: (text: string) => void;
 
   constructor(sampleRate: number = 24000) {
     this.audioContext = new AudioContext({ sampleRate });
@@ -83,6 +87,10 @@ export class AudioPlaybackQueue {
 
   setOnPlaybackEnd(callback: () => void) {
     this.onPlaybackEnd = callback;
+  }
+
+  setOnTranscript(callback: (text: string) => void) {
+    this.onTranscript = callback;
   }
 
   async resume() {
@@ -95,20 +103,50 @@ export class AudioPlaybackQueue {
   addPcmData(pcmBase64: string) {
     try {
       const pcm = base64ToPcm(pcmBase64);
+
+      // Store audio for later transcription
+      this.currentUtteranceAudio.push(pcm);
+
       const float32 = pcm16ToFloat32(pcm);
-      
+
       const buffer = this.audioContext.createBuffer(1, float32.length, this.audioContext.sampleRate);
       // Copy data manually to avoid TypeScript ArrayBuffer type issues
       const channelData = buffer.getChannelData(0);
       for (let i = 0; i < float32.length; i++) {
         channelData[i] = float32[i];
       }
-      
+
       this.queue.push(buffer);
       this.playNext();
     } catch (error) {
       console.error('Error adding PCM data to queue:', error);
     }
+  }
+
+  // Get collected audio as base64 for transcription
+  getCollectedAudioBase64(): string | null {
+    if (this.currentUtteranceAudio.length === 0) return null;
+
+    // Calculate total length
+    let totalLength = 0;
+    for (const chunk of this.currentUtteranceAudio) {
+      totalLength += chunk.length;
+    }
+
+    // Merge all chunks
+    const merged = new Int16Array(totalLength);
+    let offset = 0;
+    for (const chunk of this.currentUtteranceAudio) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return pcmToBase64(merged);
+  }
+
+  // Clear collected audio (call after transcription)
+  clearCollectedAudio() {
+    this.currentUtteranceAudio = [];
   }
 
   private playNext() {
@@ -128,17 +166,17 @@ export class AudioPlaybackQueue {
     source.buffer = buffer;
     source.connect(this.audioContext.destination);
     source.start(this.nextStartTime);
-    
+
     this.nextStartTime += buffer.duration;
-    this.currentSource = source;
+    this.activeSources.add(source);
     this.isPlaying = true;
 
     source.onended = () => {
+      this.activeSources.delete(source);
       if (this.queue.length > 0) {
         this.playNext();
-      } else {
+      } else if (this.activeSources.size === 0) {
         this.isPlaying = false;
-        this.currentSource = null;
         this.onPlaybackEnd?.();
       }
     };
@@ -147,16 +185,19 @@ export class AudioPlaybackQueue {
   // Clear the queue (for interruptions)
   clear() {
     this.queue = [];
-    if (this.currentSource) {
+    // Stop ALL active/scheduled sources
+    for (const source of this.activeSources) {
       try {
-        this.currentSource.stop();
+        source.onended = null;
+        source.stop(0);
+        source.disconnect();
       } catch (e) {
         // Ignore if already stopped
       }
-      this.currentSource = null;
     }
+    this.activeSources.clear();
     this.isPlaying = false;
-    this.nextStartTime = this.audioContext.currentTime;
+    this.nextStartTime = 0;
   }
 
   getIsPlaying() {
@@ -169,7 +210,7 @@ export class AudioPlaybackQueue {
   }
 }
 
-// Microphone capture with resampling to 16kHz
+// Microphone capture with configurable sample rate (default 16kHz for Gemini, 24kHz for xAI)
 export class MicrophoneCapture {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
@@ -178,6 +219,11 @@ export class MicrophoneCapture {
   private isCapturing = false;
   private source: MediaStreamAudioSourceNode | null = null;
   private processor: ScriptProcessorNode | null = null;
+  private sampleRate: number;
+
+  constructor(sampleRate: number = 16000) {
+    this.sampleRate = sampleRate;
+  }
 
   async start(
     onAudioData: (base64: string) => void,
@@ -185,19 +231,19 @@ export class MicrophoneCapture {
   ): Promise<void> {
     this.onAudioData = onAudioData;
     this.onLevel = onLevel;
-    
+
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ 
+      this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          sampleRate: 16000,
+          sampleRate: this.sampleRate,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-        } 
+        }
       });
-      
-      this.audioContext = new AudioContext({ sampleRate: 16000 });
+
+      this.audioContext = new AudioContext({ sampleRate: this.sampleRate });
       
       // Create a script processor for audio capture (AudioWorklet would be better but requires more setup)
       this.source = this.audioContext.createMediaStreamSource(this.stream);

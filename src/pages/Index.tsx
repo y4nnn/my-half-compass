@@ -1,20 +1,34 @@
 import { useState } from "react";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
+import { AuthScreen } from "@/components/AuthScreen";
 import { PrivacyDisclaimer } from "@/components/PrivacyDisclaimer";
 import { MicrophonePermission } from "@/components/MicrophonePermission";
 import { VoiceChat } from "@/components/VoiceChat";
 import { ProfileReport } from "@/components/ProfileReport";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
-type AppStep = "welcome" | "privacy" | "microphone" | "voiceChat" | "report" | "matching" | "chat";
+type AppStep = "welcome" | "auth" | "privacy" | "microphone" | "voiceChat" | "report" | "matching" | "chat";
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
   const [profileData, setProfileData] = useState<any>(null);
+  const [voiceChatKey, setVoiceChatKey] = useState(0);
+  const { user } = useAuth();
+
+  const handleAuthSuccess = () => {
+    setCurrentStep("privacy");
+  };
 
   const handleVoiceChatComplete = (data: any) => {
     setProfileData(data);
     setCurrentStep("report");
+  };
+
+  const handleTalkToLuna = () => {
+    // Increment key to force VoiceChat remount and reset its state
+    setVoiceChatKey(prev => prev + 1);
+    setCurrentStep("voiceChat");
   };
 
   return (
@@ -27,7 +41,22 @@ const Index = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <WelcomeScreen onStart={() => setCurrentStep("privacy")} />
+          <WelcomeScreen onStart={() => setCurrentStep("auth")} />
+        </motion.div>
+      )}
+
+      {currentStep === "auth" && (
+        <motion.div
+          key="auth"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <AuthScreen
+            onBack={() => setCurrentStep("welcome")}
+            onSuccess={handleAuthSuccess}
+          />
         </motion.div>
       )}
 
@@ -61,17 +90,18 @@ const Index = () => {
         </motion.div>
       )}
 
-      {currentStep === "voiceChat" && (
+      {currentStep === "voiceChat" && user && (
         <motion.div
-          key="voiceChat"
+          key={`voiceChat-${voiceChatKey}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
           <VoiceChat
+            userId={user.id}
             onComplete={handleVoiceChatComplete}
-            onExit={() => setCurrentStep("welcome")}
+            onExit={() => setCurrentStep(profileData ? "report" : "welcome")}
           />
         </motion.div>
       )}
@@ -87,6 +117,7 @@ const Index = () => {
           <ProfileReport
             profileData={profileData}
             onFindMatch={() => setCurrentStep("matching")}
+            onTalkToLuna={handleTalkToLuna}
           />
         </motion.div>
       )}
