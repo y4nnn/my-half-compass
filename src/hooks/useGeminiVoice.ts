@@ -59,13 +59,74 @@ export interface TranscriptMessage {
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
+// Existing profile context for returning users
+interface ExistingProfileContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  profile: Record<string, any>;
+  sessionCount: number;
+}
+
 interface UseGeminiVoiceOptions {
   userId: string; // Required - authenticated user ID
+  existingProfile?: ExistingProfileContext; // Previous profile data for context
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: string) => void;
   onTranscript?: (message: TranscriptMessage) => void;
   onSessionStart?: (sessionNumber: number) => void;
+}
+
+// Build profile context prompt for returning users
+function buildProfileContextPrompt(existingProfile?: ExistingProfileContext): string {
+  if (!existingProfile?.profile) return '';
+
+  const { profile, sessionCount } = existingProfile;
+  const basicInfo = profile.basicInfo || {};
+
+  // Build a summary of what we know
+  let context = `\n\n=== MÉMOIRE DES SESSIONS PRÉCÉDENTES (Session #${sessionCount + 1}) ===\n`;
+  context += `Tu as déjà parlé avec cette personne ${sessionCount} fois. Voici ce que tu sais :\n\n`;
+
+  // Basic info
+  if (basicInfo.name) context += `- Prénom : ${basicInfo.name}\n`;
+  if (basicInfo.ageRange) context += `- Âge : ${basicInfo.ageRange}\n`;
+  if (basicInfo.location) context += `- Lieu : ${basicInfo.location}\n`;
+  if (basicInfo.occupation) context += `- Profession : ${basicInfo.occupation}\n`;
+
+  // Core values if present
+  if (profile.identityAndSelfConcept?.coreValues?.length > 0) {
+    context += `- Valeurs importantes : ${profile.identityAndSelfConcept.coreValues.join(', ')}\n`;
+  }
+
+  // Attachment style
+  if (profile.interpersonalStyle?.attachmentPattern) {
+    context += `- Style d'attachement : ${profile.interpersonalStyle.attachmentPattern}\n`;
+  }
+
+  // Key insights
+  if (profile.keyInsights?.length > 0) {
+    context += `\nInsights clés sur la personne :\n`;
+    profile.keyInsights.slice(0, 5).forEach((insight: string) => {
+      context += `- ${insight}\n`;
+    });
+  }
+
+  // Dimensions to explore
+  if (profile.dimensionsToExplore?.length > 0) {
+    context += `\nDimensions à explorer davantage :\n`;
+    profile.dimensionsToExplore.slice(0, 3).forEach((dim: string) => {
+      context += `- ${dim}\n`;
+    });
+  }
+
+  context += `\n=== INSTRUCTIONS ===\n`;
+  context += `- NE REDEMANDE PAS les infos de base (prénom, âge, lieu, profession) - tu les connais déjà !\n`;
+  context += `- Utilise son prénom naturellement dès le début\n`;
+  context += `- Commence par une référence à votre dernière discussion ou un sujet qu'elle avait mentionné\n`;
+  context += `- Explore les dimensions qui n'ont pas encore été couvertes ou qui ont un faible niveau de confiance\n`;
+  context += `- Approfondis ce que tu sais déjà pour affiner le profil\n`;
+
+  return context;
 }
 
 // Luna's system prompt - comprehensive psychological mapping
@@ -641,9 +702,10 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
         console.log('Reconnecting to Gemini Live API...');
       }
 
-      // Build system prompt with conversation context for reconnects
+      // Build system prompt with conversation context for reconnects and profile memory
       const conversationContext = isReconnect ? buildConversationSummary() : '';
-      const fullSystemPrompt = SYSTEM_PROMPT + contextPromptRef.current + conversationContext;
+      const profileContext = buildProfileContextPrompt(options.existingProfile);
+      const fullSystemPrompt = SYSTEM_PROMPT + profileContext + contextPromptRef.current + conversationContext;
 
       // Initialize audio playback (24kHz for Gemini output)
       playbackRef.current = new AudioPlaybackQueue(24000);

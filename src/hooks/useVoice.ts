@@ -15,10 +15,18 @@ export interface TranscriptMessage {
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
+// Existing profile data to provide context to the voice agent
+export interface ExistingProfileContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  profile: Record<string, any>;
+  sessionCount: number;
+}
+
 interface UseVoiceOptions {
   provider: VoiceProvider;
   userId: string;
   grokVoice?: GrokVoiceOption; // Voice selection for Grok
+  existingProfile?: ExistingProfileContext; // Pass existing profile for context
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: string) => void;
@@ -50,12 +58,12 @@ export function getDefaultProvider(): VoiceProvider {
 }
 
 export function useVoice(options: UseVoiceOptions): VoiceHookReturn {
-  const { provider, grokVoice, ...hookOptions } = options;
+  const { provider, grokVoice, existingProfile, ...hookOptions } = options;
 
   // Call both hooks but only use the active one
   // React hooks must be called unconditionally
-  const geminiHook = useGeminiVoice(hookOptions);
-  const grokHook = useGrokVoice({ ...hookOptions, voice: grokVoice });
+  const geminiHook = useGeminiVoice({ ...hookOptions, existingProfile });
+  const grokHook = useGrokVoice({ ...hookOptions, voice: grokVoice, existingProfile });
 
   // Return the appropriate hook based on provider
   const activeHook = provider === 'grok' ? grokHook : geminiHook;

@@ -1,11 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { VoiceOrb } from "@/components/ui/VoiceOrb";
 import { Pause, Play, X, Volume2, Loader2, Sparkles, Zap, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useVoice, VoiceProvider, TranscriptMessage, getDefaultProvider, GrokVoiceOption } from "@/hooks/useVoice";
+import { useVoice, VoiceProvider, TranscriptMessage, getDefaultProvider, GrokVoiceOption, ExistingProfileContext } from "@/hooks/useVoice";
 import { GROK_VOICES } from "@/hooks/useGrokVoice";
 
 interface VoiceChatProps {
@@ -21,6 +21,27 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
   const [selectedProvider, setSelectedProvider] = useState<VoiceProvider | null>(null);
   const [selectedGrokVoice, setSelectedGrokVoice] = useState<GrokVoiceOption | null>(null);
   const [showVoiceSelection, setShowVoiceSelection] = useState(false);
+  const [existingProfile, setExistingProfile] = useState<ExistingProfileContext | undefined>(undefined);
+
+  // Fetch existing profile on mount
+  useEffect(() => {
+    async function fetchExistingProfile() {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('profile, session_count')
+        .eq('user_id', userId)
+        .single();
+
+      if (!error && data) {
+        console.log(`Found existing profile (session #${data.session_count})`);
+        setExistingProfile({
+          profile: data.profile,
+          sessionCount: data.session_count
+        });
+      }
+    }
+    fetchExistingProfile();
+  }, [userId]);
 
   // Use the unified voice hook with selected provider
   const activeProvider = selectedProvider || getDefaultProvider();
@@ -42,6 +63,7 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
     provider: activeProvider,
     userId,
     grokVoice: selectedGrokVoice || undefined,
+    existingProfile: existingProfile,
     onConnect: () => {
       console.log(`Connected to ${activeProvider} voice session`);
       setStatusMessage("Connecté - préparation de votre guide...");
@@ -81,14 +103,35 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
     setStatusMessage("Analyse de votre conversation...");
 
     try {
-      // Convert transcript format for analyze-profile function
+      // 1. Fetch existing profile from database (if any)
+      let existingProfile = null;
+      let sessionCount = 1;
+
+      const { data: existingData, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('profile, session_count')
+        .eq('user_id', userId)
+        .single();
+
+      if (!fetchError && existingData) {
+        existingProfile = existingData.profile;
+        sessionCount = (existingData.session_count || 1) + 1;
+        console.log(`Found existing profile (session #${sessionCount - 1}), will merge with new data`);
+      }
+
+      // 2. Convert transcript format for analyze-profile function
       const formattedTranscript = transcriptData.map(msg => ({
         role: msg.role === 'assistant' ? 'agent' : msg.role,
         content: msg.content
       }));
 
+      // 3. Call analyze-profile with existing profile for merging
       const { data, error } = await supabase.functions.invoke("analyze-profile", {
-        body: { transcript: formattedTranscript }
+        body: {
+          transcript: formattedTranscript,
+          existingProfile: existingProfile,
+          sessionCount: sessionCount
+        }
       });
 
       if (error) {
@@ -101,8 +144,43 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
         };
       }
 
+      // 4. Save/update profile in database
+      const profileToSave = data.profile;
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({
+            profile: profileToSave,
+            session_count: sessionCount
+          })
+          .eq('user_id', userId);
+
+        if (updateError) {
+          console.error("Failed to update profile:", updateError);
+        } else {
+          console.log(`Profile updated (session #${sessionCount})`);
+        }
+      } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            profile: profileToSave,
+            session_count: 1
+          });
+
+        if (insertError) {
+          console.error("Failed to save profile:", insertError);
+        } else {
+          console.log("New profile saved");
+        }
+      }
+
       return {
-        ...data.profile,
+        ...profileToSave,
         rawTranscript: transcriptData
       };
     } catch (error) {

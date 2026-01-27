@@ -12,7 +12,9 @@ import {
   Shield,
   Star,
   ChevronDown,
-  Mic
+  Mic,
+  BookOpen,
+  Calendar
 } from "lucide-react";
 import { useState } from "react";
 
@@ -140,6 +142,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna }: Profil
     vulnerabilities,
     developmentalFactors,
     relationshipProfile,
+    conversationJournal,
     overallSummary,
     keyInsights,
     matchingKeywords,
@@ -168,6 +171,105 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna }: Profil
       </motion.div>
 
       <div className="px-4 py-6 pb-32 space-y-4">
+        {/* Conversation Journal */}
+        {conversationJournal && (
+          <motion.div
+            className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/10 border border-indigo-500/20"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.05 }}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <BookOpen className="w-5 h-5 text-indigo-500 mt-0.5" />
+              <h2 className="font-semibold text-foreground">Journal des conversations</h2>
+            </div>
+
+            {/* Cumulative Narrative */}
+            {conversationJournal.cumulativeNarrative && (
+              <p className="text-sm text-foreground/90 leading-relaxed mb-4">
+                {conversationJournal.cumulativeNarrative}
+              </p>
+            )}
+
+            {/* Recurring Themes */}
+            {conversationJournal.recurringThemes && conversationJournal.recurringThemes.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-muted-foreground mb-2">Thèmes récurrents</p>
+                <div className="flex flex-wrap gap-2">
+                  {conversationJournal.recurringThemes.map((theme: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-medium"
+                    >
+                      {theme}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Session Entries */}
+            {conversationJournal.sessions && conversationJournal.sessions.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Sessions ({conversationJournal.sessions.length})</p>
+                {conversationJournal.sessions.map((session: {
+                  sessionNumber: number;
+                  date?: string;
+                  topicsDiscussed?: string[];
+                  keyMoments?: string[];
+                  emotionalTone?: string;
+                  briefSummary?: string;
+                }, idx: number) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl bg-background/50 border border-border/30"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-foreground">
+                        Session {session.sessionNumber}
+                      </span>
+                      {session.date && (
+                        <span className="text-xs text-muted-foreground">
+                          • {new Date(session.date).toLocaleDateString('fr-FR')}
+                        </span>
+                      )}
+                      {session.emotionalTone && (
+                        <span className="ml-auto text-xs text-muted-foreground italic">
+                          {session.emotionalTone}
+                        </span>
+                      )}
+                    </div>
+                    {session.briefSummary && (
+                      <p className="text-sm text-foreground/80 mb-2">{session.briefSummary}</p>
+                    )}
+                    {session.topicsDiscussed && session.topicsDiscussed.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {session.topicsDiscussed.map((topic: string, tidx: number) => (
+                          <span
+                            key={tidx}
+                            className="px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground text-xs"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Progression Notes */}
+            {conversationJournal.progressionNotes && (
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <p className="text-xs text-muted-foreground mb-1">Notes d'évolution</p>
+                <p className="text-sm text-foreground/80 italic">{conversationJournal.progressionNotes}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* Summary Card */}
         <motion.div
           className="p-5 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20"

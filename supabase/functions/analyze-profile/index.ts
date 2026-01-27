@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { transcript } = await req.json();
+    const { transcript, existingProfile, sessionCount = 1 } = await req.json();
     const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
 
     if (!GOOGLE_AI_API_KEY) {
@@ -22,7 +22,8 @@ serve(async (req) => {
       throw new Error("No transcript provided");
     }
 
-    console.log("Analyzing transcript with", transcript.length, "messages");
+    const isUpdate = existingProfile && sessionCount > 1;
+    console.log(`Analyzing transcript with ${transcript.length} messages. Session #${sessionCount}, isUpdate: ${isUpdate}`);
 
     const systemPrompt = `Tu es un expert en psychologie et en analyse relationnelle. Analyse cette conversation entre un utilisateur et Luna (guide IA) pour créer un profil psychologique complet basé sur 12 dimensions à des fins de matching amoureux.
 
@@ -157,12 +158,43 @@ Luna est une guide IA qui pose des questions pour découvrir la personne. Elle c
 
 Puis elle explore les dimensions psychologiques plus profondes. Les réponses de l'utilisateur contiennent donc les informations clés sur ces sujets. Même si tu ne vois que les réponses de l'utilisateur, déduis les informations de base (prénom, âge, lieu, profession) à partir du contexte de leurs réponses.`;
 
+    // Build the merging instructions if we have an existing profile
+    const mergingInstructions = isUpdate ? `
+
+=== INSTRUCTIONS DE MISE À JOUR DU PROFIL ===
+Tu as accès au PROFIL EXISTANT de cette personne basé sur ${sessionCount - 1} session(s) précédente(s).
+
+PROFIL EXISTANT À METTRE À JOUR :
+${JSON.stringify(existingProfile, null, 2)}
+
+RÈGLES DE MISE À JOUR :
+1. **Confirmer ou affiner** : Si les nouvelles données confirment les évaluations existantes, AUGMENTE le niveau de confiance
+2. **Enrichir** : Ajoute les nouvelles informations découvertes sans perdre les anciennes
+3. **Corriger avec prudence** : Ne modifie les scores existants que si les nouvelles données contredisent clairement
+4. **Pondération par confiance** :
+   - Confiance "faible" : peut être facilement mise à jour avec de nouvelles données
+   - Confiance "moyen" : nécessite des données cohérentes pour changer
+   - Confiance "élevé" : ne change que si contradiction forte et répétée
+5. **Documenter les évolutions** : Note dans "contradictionsObserved" si tu observes des changements significatifs
+6. **Fusionner les listes** : Pour les tableaux (coreValues, characterStrengths, etc.), fusionne les anciennes et nouvelles valeurs sans doublons
+7. **Journal des conversations** :
+   - CONSERVE toutes les entrées existantes dans conversationJournal.sessions
+   - AJOUTE une nouvelle entrée pour la session actuelle (session #${sessionCount})
+   - Mets à jour cumulativeNarrative pour refléter l'ensemble des sessions
+   - Identifie les recurringThemes qui apparaissent à travers les sessions
+   - Documente dans progressionNotes l'évolution observée
+
+` : '';
+
+    // Combine base prompt with merging instructions if applicable
+    const fullSystemPrompt = systemPrompt + mergingInstructions;
+
     const transcriptText = transcript.map((m: { role: string; content: string }) =>
       `${m.role === 'assistant' ? 'LUNA' : 'UTILISATEUR'}: ${m.content}`
     ).join('\n\n');
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -173,7 +205,7 @@ Puis elle explore les dimensions psychologiques plus profondes. Les réponses de
             {
               role: "user",
               parts: [
-                { text: `${systemPrompt}\n\nVoici la conversation à analyser :\n\n${transcriptText}` }
+                { text: `${fullSystemPrompt}\n\nVoici la conversation à analyser :\n\n${transcriptText}` }
               ]
             }
           ],
@@ -397,6 +429,31 @@ Puis elle explore les dimensions psychologiques plus profondes. Les réponses de
                         }
                       },
 
+                      // Conversation Journal - Summary of all discussions
+                      conversationJournal: {
+                        type: "object",
+                        properties: {
+                          sessions: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                sessionNumber: { type: "number" },
+                                date: { type: "string", description: "Date de la session (ISO format)" },
+                                topicsDiscussed: { type: "array", items: { type: "string" }, description: "Principaux sujets abordés" },
+                                keyMoments: { type: "array", items: { type: "string" }, description: "Moments clés ou révélations importantes" },
+                                emotionalTone: { type: "string", description: "Ton émotionnel général de la session" },
+                                briefSummary: { type: "string", description: "Résumé bref de la session (2-3 phrases)" }
+                              }
+                            },
+                            description: "Entrées du journal pour chaque session"
+                          },
+                          cumulativeNarrative: { type: "string", description: "Récit cumulatif de l'évolution de la personne à travers les sessions" },
+                          recurringThemes: { type: "array", items: { type: "string" }, description: "Thèmes récurrents observés à travers les sessions" },
+                          progressionNotes: { type: "string", description: "Notes sur l'évolution et les changements observés au fil des sessions" }
+                        }
+                      },
+
                       // Summary & Matching
                       overallSummary: { type: "string", description: "Résumé narratif du profil psychologique" },
                       keyInsights: { type: "array", items: { type: "string" }, description: "Insights clés sur la personne" },
@@ -449,9 +506,21 @@ Puis elle explore les dimensions psychologiques plus profondes. Les réponses de
     const functionCall = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
     if (functionCall?.name === "create_psychological_profile" && functionCall?.args) {
       const profile = functionCall.args;
-      console.log("Psychological profile extracted successfully");
 
-      return new Response(JSON.stringify({ profile }), {
+      // Add metadata about the analysis
+      const profileWithMetadata = {
+        ...profile,
+        _metadata: {
+          sessionCount: sessionCount,
+          lastUpdated: new Date().toISOString(),
+          isUpdate: isUpdate,
+          model: 'gemini-2.5-flash'
+        }
+      };
+
+      console.log(`Psychological profile ${isUpdate ? 'updated' : 'created'} successfully (session #${sessionCount})`);
+
+      return new Response(JSON.stringify({ profile: profileWithMetadata }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
