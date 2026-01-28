@@ -46,10 +46,10 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             </div>
           </div>
           <h1 className="text-4xl font-display font-bold text-foreground mb-2">
-            MYHALF
+            Echo
           </h1>
           <p className="text-lg text-muted-foreground">
-            Se connecter par l'expérience partagée
+            Trouve ton écho
           </p>
         </motion.div>
 

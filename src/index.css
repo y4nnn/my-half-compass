@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MYHALF Design System - Light/Dark Theme with Violet-Blue accents */
+/* Echo Design System - Light/Dark Theme with Violet-Blue accents */
 
 @layer base {
   :root {
@@ -42,7 +42,7 @@
 
     --radius: 1rem;
 
-    /* Custom MYHALF tokens - Light mode */
+    /* Custom Echo tokens - Light mode */
     --calm-gradient: linear-gradient(135deg, hsl(255 70% 60% / 0.08), hsl(220 70% 50% / 0.08));
     --warm-gradient: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 98%));
     --glow-soft: 0 8px 32px -8px hsl(255 70% 60% / 0.25);

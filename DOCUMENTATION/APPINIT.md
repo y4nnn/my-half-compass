@@ -1,4 +1,4 @@
-# MYHALF COMPASS - Application Documentation
+# Echo - Application Documentation
 
 **Version:** 1.0.0
 **Last Updated:** January 2025
@@ -26,9 +26,9 @@
 
 ## 1. Project Overview
 
-### What is MyHalf Compass?
+### What is Echo?
 
-MyHalf Compass is a **French-language voice-based AI dating platform** that creates deep psychological profiles through natural conversations. Users engage in 25-30 minute voice sessions with "Luna," an AI personality powered by either **Google Gemini** or **xAI Grok**.
+Echo is a **French-language voice-based AI dating platform** that creates deep psychological profiles through natural conversations. Users engage in 25-30 minute voice sessions with "Luna," an AI personality powered by either **Google Gemini** or **xAI Grok**.
 
 ### Core Features
 
@@ -816,8 +816,8 @@ The app is designed for migration to React Native using **Expo** for cross-platf
 
 #### Step 1: Initialize Expo Project
 ```bash
-npx create-expo-app myhalf-mobile --template expo-template-blank-typescript
-cd myhalf-mobile
+npx create-expo-app echo-mobile --template expo-template-blank-typescript
+cd echo-mobile
 ```
 
 #### Step 2: Install Dependencies
@@ -842,7 +842,7 @@ npx expo install react-native-screens react-native-safe-area-context
 
 #### Step 3: File Structure
 ```
-myhalf-mobile/
+echo-mobile/
 ├── app/
 │   ├── (tabs)/
 │   │   ├── index.tsx          # Welcome

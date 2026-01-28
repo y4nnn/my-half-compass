@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MYHALF is a French-language dating/matching app that uses voice-based AI conversations to build detailed user profiles. Users talk with "Luna" (an AI guide powered by Google's Gemini Live API) who conducts a natural 30-minute conversation, then their transcript is analyzed to create a comprehensive personality profile for matching purposes.
+Echo is a French-language dating/matching app that uses voice-based AI conversations to build detailed user profiles. Users talk with "Luna" (an AI guide powered by Google's Gemini Live API) who conducts a natural 30-minute conversation, then their transcript is analyzed to create a comprehensive personality profile for matching purposes.
 
 ## Commands
 
