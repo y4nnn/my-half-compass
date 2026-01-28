@@ -2,10 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MYHALF Design System - Dark Violet/Blue Theme */
+/* MYHALF Design System - Light/Dark Theme with Violet-Blue accents */
 
 @layer base {
   :root {
+    /* Light theme (default) with violet-blue accents */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 10%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+
+    /* Violet-blue gradient primary */
+    --primary: 255 70% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light grey secondary */
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 240 10% 20%;
+
+    /* Muted grey */
+    --muted: 240 5% 95%;
+    --muted-foreground: 240 5% 45%;
+
+    /* Soft violet accent */
+    --accent: 260 40% 94%;
+    --accent-foreground: 260 60% 40%;
+
+    /* Coral for destructive */
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 88%;
+    --input: 240 5% 88%;
+    --ring: 255 70% 55%;
+
+    --radius: 1rem;
+
+    /* Custom MYHALF tokens - Light mode */
+    --calm-gradient: linear-gradient(135deg, hsl(255 70% 60% / 0.08), hsl(220 70% 50% / 0.08));
+    --warm-gradient: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 98%));
+    --glow-soft: 0 8px 32px -8px hsl(255 70% 60% / 0.25);
+    --shadow-warm: 0 4px 20px -4px hsl(255 70% 60% / 0.2);
+
+    /* Animation tokens */
+    --transition-gentle: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 10% 10%;
+    --sidebar-primary: 255 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 92%;
+    --sidebar-accent-foreground: 240 10% 20%;
+    --sidebar-border: 240 5% 88%;
+    --sidebar-ring: 255 70% 55%;
+  }
+
+  .dark {
     /* Dark theme with violet-blue accents */
     --background: 240 10% 6%;
     --foreground: 0 0% 95%;
@@ -16,23 +73,18 @@
     --popover: 240 10% 10%;
     --popover-foreground: 0 0% 95%;
 
-    /* Violet-blue gradient primary */
     --primary: 255 70% 60%;
     --primary-foreground: 0 0% 100%;
 
-    /* Dark grey secondary */
     --secondary: 240 8% 16%;
     --secondary-foreground: 0 0% 90%;
 
-    /* Muted grey */
     --muted: 240 6% 18%;
     --muted-foreground: 240 5% 55%;
 
-    /* Soft violet accent */
     --accent: 260 50% 20%;
     --accent-foreground: 260 70% 80%;
 
-    /* Coral for destructive */
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
@@ -40,57 +92,11 @@
     --input: 240 8% 18%;
     --ring: 255 70% 60%;
 
-    --radius: 1rem;
-
-    /* Custom MYHALF tokens */
+    /* Dark mode tokens */
     --calm-gradient: linear-gradient(135deg, hsl(255 70% 60% / 0.15), hsl(220 70% 50% / 0.15));
     --warm-gradient: linear-gradient(180deg, hsl(240 10% 8%), hsl(240 10% 6%));
     --glow-soft: 0 8px 32px -8px hsl(255 70% 60% / 0.4);
     --shadow-warm: 0 4px 20px -4px hsl(255 70% 60% / 0.3);
-
-    /* Animation tokens */
-    --transition-gentle: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    --sidebar-background: 240 10% 10%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 255 70% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 8% 16%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 240 8% 18%;
-    --sidebar-ring: 255 70% 60%;
-  }
-
-  .dark {
-    /* Same as root - app is dark by default */
-    --background: 240 10% 6%;
-    --foreground: 0 0% 95%;
-
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 95%;
-
-    --popover: 240 10% 10%;
-    --popover-foreground: 0 0% 95%;
-
-    --primary: 255 70% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 240 8% 16%;
-    --secondary-foreground: 0 0% 90%;
-
-    --muted: 240 6% 18%;
-    --muted-foreground: 240 5% 55%;
-
-    --accent: 260 50% 20%;
-    --accent-foreground: 260 70% 80%;
-
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 240 8% 18%;
-    --input: 240 8% 18%;
-    --ring: 255 70% 60%;
 
     --sidebar-background: 240 10% 8%;
     --sidebar-foreground: 0 0% 95%;

@@ -6,7 +6,8 @@ import {
   endSession,
   getPreviousContext,
   buildContextPrompt,
-  type Session
+  type Session,
+  type SessionStats
 } from '@/lib/sessionService';
 
 // Web Speech API types
@@ -143,7 +144,7 @@ const SYSTEM_PROMPT = `Tu es Luna, 28 ans, espiègle, pétillante et curieuse. T
 === TON CARACTÈRE ===
 - Espiègle et malicieuse (petites piques gentilles, taquineries)
 - Chaleureuse et vraie
-- Tu ris beaucoup, tu as de l'énergie
+- Tu ris un peu, tu as de l'énergie tout en restant calme
 - Directe mais bienveillante
 - Tu fais des petites blagues, des "hihi", des "oh là là"
 - Quand quelqu'un te plaît ou dit un truc cool : "J'aime bien !", "T'es marrant·e toi !"
@@ -465,8 +466,11 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
   const [sessionReady, setSessionReady] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [sessionNumber, setSessionNumber] = useState(0);
+  const [sessionDuration, setSessionDuration] = useState(0); // Duration in seconds
 
   const wsRef = useRef<WebSocket | null>(null);
+  const sessionStartTimeRef = useRef<number | null>(null);
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const micRef = useRef<MicrophoneCapture | null>(null);
   const playbackRef = useRef<AudioPlaybackQueue | null>(null);
   const transcriptRef = useRef<TranscriptMessage[]>([]);
@@ -818,6 +822,15 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
             setIsListening(true);
             options.onConnect?.();
 
+            // Start session duration tracking
+            sessionStartTimeRef.current = Date.now();
+            durationIntervalRef.current = setInterval(() => {
+              if (sessionStartTimeRef.current) {
+                const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
+                setSessionDuration(elapsed);
+              }
+            }, 1000);
+
             // Start batch saving every 30 seconds for resilience
             batchSaveIntervalRef.current = setInterval(() => {
               batchSaveTranscript();
@@ -1041,6 +1054,13 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
   }, [stopSpeechRecognition]);
 
   const disconnect = useCallback(async () => {
+    // Stop duration tracking
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    sessionStartTimeRef.current = null;
+
     // Stop batch save interval
     if (batchSaveIntervalRef.current) {
       clearInterval(batchSaveIntervalRef.current);
@@ -1056,9 +1076,13 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
     // Final batch save before disconnecting
     await batchSaveTranscript();
 
-    // End session in database
+    // End session in database with stats
     if (sessionRef.current && userIdRef.current) {
-      await endSession(sessionRef.current.id, userIdRef.current);
+      const stats: SessionStats = {
+        durationSeconds: sessionDuration,
+        provider: 'gemini'
+      };
+      await endSession(sessionRef.current.id, userIdRef.current, stats);
       sessionRef.current = null;
     }
 
@@ -1068,7 +1092,7 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
     }
     cleanup();
     setStatus('disconnected');
-  }, [cleanup, batchSaveTranscript]);
+  }, [cleanup, batchSaveTranscript, sessionDuration]);
 
   const getTranscript = useCallback(() => {
     return transcriptRef.current;
@@ -1085,6 +1109,7 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
     transcript,
     getTranscript,
     sessionNumber,
+    sessionDuration,
     isConnected: status === 'connected',
     isConnecting: status === 'connecting',
   };

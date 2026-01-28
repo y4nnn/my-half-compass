@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { VoiceOrb } from "@/components/ui/VoiceOrb";
-import { Pause, Play, X, Volume2, Loader2, Sparkles, Zap, ChevronLeft } from "lucide-react";
+import { AudioEqualizer } from "@/components/ui/AudioEqualizer";
+import { Pause, Play, X, Volume2, Loader2, Sparkles, Zap, ChevronLeft, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useVoice, VoiceProvider, TranscriptMessage, getDefaultProvider, GrokVoiceOption, ExistingProfileContext } from "@/hooks/useVoice";
 import { GROK_VOICES } from "@/hooks/useGrokVoice";
+import { formatDuration, estimateSessionCost } from "@/lib/costEstimation";
 
 interface VoiceChatProps {
   userId: string;
@@ -59,6 +60,7 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
     isConnected,
     isConnecting,
     provider,
+    sessionDuration,
   } = useVoice({
     provider: activeProvider,
     userId,
@@ -399,11 +401,21 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
           <X className="w-5 h-5" />
         </Button>
 
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/60 backdrop-blur-sm border border-border/50">
-          <Volume2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {provider === 'grok' ? `Grok (${selectedGrokVoice || 'Ara'})` : 'Gemini'}
-          </span>
+        <div className="flex items-center gap-3">
+          {isConnected && sessionDuration > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/60 backdrop-blur-sm border border-border/50">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-sm font-mono text-muted-foreground">
+                {formatDuration(sessionDuration)}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/60 backdrop-blur-sm border border-border/50">
+            <Volume2 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {provider === 'grok' ? `Grok (${selectedGrokVoice || 'Ara'})` : 'Gemini'}
+            </span>
+          </div>
         </div>
 
         <div className="w-10" /> {/* Spacer for alignment */}
@@ -411,19 +423,19 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-32">
-        {/* Voice Orb */}
+        {/* Audio Equalizer */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="mb-8"
+          className="mb-8 h-32 flex items-center justify-center"
         >
           {isAnalyzing ? (
             <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center">
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
             </div>
           ) : (
-            <VoiceOrb
+            <AudioEqualizer
               isListening={isConnected && isListening && !isSpeaking}
               isSpeaking={isSpeaking}
               isConnecting={isConnecting}
@@ -452,7 +464,7 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
             </motion.p>
           </AnimatePresence>
 
-          {/* Readiness + Mic meter */}
+          {/* Readiness + Mic meter + Cost */}
           {isConnected && (
             <div className="mt-4 mx-auto w-full max-w-sm rounded-xl bg-card/40 backdrop-blur-sm border border-border/30 px-4 py-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -471,6 +483,15 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
                   />
                 </div>
               </div>
+
+              {sessionDuration > 0 && (
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Coût estimé</span>
+                  <span className="font-mono">
+                    {estimateSessionCost(sessionDuration, activeProvider).estimatedCostFormatted}
+                  </span>
+                </div>
+              )}
 
               {!sessionReady && (
                 <p className="mt-2 text-[11px] text-muted-foreground">

@@ -45,6 +45,7 @@ interface VoiceHookReturn {
   transcript: TranscriptMessage[];
   getTranscript: () => TranscriptMessage[];
   sessionNumber: number;
+  sessionDuration: number;
   isConnected: boolean;
   isConnecting: boolean;
   provider: VoiceProvider;

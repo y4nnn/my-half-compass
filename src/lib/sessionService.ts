@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { TranscriptMessage } from '@/hooks/useGeminiVoice';
+import { estimateSessionCost, type VoiceProvider } from './costEstimation';
 
 // Types for database operations
 export interface Session {
@@ -9,6 +10,11 @@ export interface Session {
   ended_at: string | null;
   session_number: number;
   status: 'active' | 'completed' | 'abandoned';
+  duration_seconds?: number;
+  provider?: VoiceProvider;
+  estimated_cost_usd?: number;
+  estimated_input_tokens?: number;
+  estimated_output_tokens?: number;
 }
 
 export interface ContextSummary {
@@ -110,14 +116,39 @@ export async function saveMessagesBatch(
   return messages.length;
 }
 
+// Session stats for cost tracking
+export interface SessionStats {
+  durationSeconds: number;
+  provider: VoiceProvider;
+}
+
 // End a session and generate summary
-export async function endSession(sessionId: string, userId: string): Promise<void> {
+export async function endSession(
+  sessionId: string,
+  userId: string,
+  stats?: SessionStats
+): Promise<void> {
+  // Build update object
+  const updateData: Record<string, unknown> = {
+    ended_at: new Date().toISOString(),
+    status: 'completed'
+  };
+
+  // Add cost tracking data if stats provided
+  if (stats) {
+    const costEstimate = estimateSessionCost(stats.durationSeconds, stats.provider);
+    updateData.duration_seconds = stats.durationSeconds;
+    updateData.provider = stats.provider;
+    updateData.estimated_cost_usd = costEstimate.estimatedCostUSD;
+    updateData.estimated_input_tokens = costEstimate.estimatedInputTokens;
+    updateData.estimated_output_tokens = costEstimate.estimatedOutputTokens;
+
+    console.log(`Session ended - Duration: ${costEstimate.durationFormatted}, Estimated cost: ${costEstimate.estimatedCostFormatted}`);
+  }
+
   const { error } = await supabase
     .from('sessions')
-    .update({
-      ended_at: new Date().toISOString(),
-      status: 'completed'
-    })
+    .update(updateData)
     .eq('id', sessionId);
 
   if (error) {

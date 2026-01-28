@@ -6,7 +6,8 @@ import {
   endSession,
   getPreviousContext,
   buildContextPrompt,
-  type Session
+  type Session,
+  type SessionStats
 } from '@/lib/sessionService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -258,8 +259,11 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
   const [sessionReady, setSessionReady] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [sessionNumber, setSessionNumber] = useState(0);
+  const [sessionDuration, setSessionDuration] = useState(0); // Duration in seconds
 
   const wsRef = useRef<WebSocket | null>(null);
+  const sessionStartTimeRef = useRef<number | null>(null);
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const micRef = useRef<MicrophoneCapture | null>(null);
   const playbackRef = useRef<AudioPlaybackQueue | null>(null);
   const transcriptRef = useRef<TranscriptMessage[]>([]);
@@ -525,6 +529,15 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
                   setIsListening(true);
                   options.onConnect?.();
 
+                  // Start session duration tracking
+                  sessionStartTimeRef.current = Date.now();
+                  durationIntervalRef.current = setInterval(() => {
+                    if (sessionStartTimeRef.current) {
+                      const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
+                      setSessionDuration(elapsed);
+                    }
+                  }, 1000);
+
                   // Start batch saving
                   batchSaveIntervalRef.current = setInterval(() => {
                     batchSaveTranscript();
@@ -573,6 +586,15 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
               setSessionReady(true);
               setIsListening(true);
               options.onConnect?.();
+
+              // Start session duration tracking
+              sessionStartTimeRef.current = Date.now();
+              durationIntervalRef.current = setInterval(() => {
+                if (sessionStartTimeRef.current) {
+                  const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
+                  setSessionDuration(elapsed);
+                }
+              }, 1000);
 
               // Start batch saving
               batchSaveIntervalRef.current = setInterval(() => {
@@ -835,6 +857,13 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
     // Immediately stop microphone and playback BEFORE anything else
     cleanup();
 
+    // Stop duration tracking
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    sessionStartTimeRef.current = null;
+
     if (batchSaveIntervalRef.current) {
       clearInterval(batchSaveIntervalRef.current);
       batchSaveIntervalRef.current = null;
@@ -847,8 +876,13 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
 
     await batchSaveTranscript();
 
+    // End session with stats
     if (sessionRef.current && userIdRef.current) {
-      await endSession(sessionRef.current.id, userIdRef.current);
+      const stats: SessionStats = {
+        durationSeconds: sessionDuration,
+        provider: 'grok'
+      };
+      await endSession(sessionRef.current.id, userIdRef.current, stats);
       sessionRef.current = null;
     }
 
@@ -870,7 +904,7 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
 
     setStatus('disconnected');
     console.log('Grok disconnect complete');
-  }, [cleanup, batchSaveTranscript]);
+  }, [cleanup, batchSaveTranscript, sessionDuration]);
 
   const getTranscript = useCallback(() => {
     return transcriptRef.current;
@@ -887,6 +921,7 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
     transcript,
     getTranscript,
     sessionNumber,
+    sessionDuration,
     isConnected: status === 'connected',
     isConnecting: status === 'connecting',
   };
