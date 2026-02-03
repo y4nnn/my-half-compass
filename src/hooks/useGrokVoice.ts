@@ -10,6 +10,17 @@ import {
   type SessionStats
 } from '@/lib/sessionService';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  type ScenarioId,
+  type ScenarioSummary,
+  getNextScenario,
+  getScenarioToDeepen,
+  buildScenarioSwitchingInstructions,
+  buildFirstSessionPrompt,
+  buildReturningUserPrompt,
+  buildDeepeningPrompt
+} from '@/lib/scenarios';
+import { buildAssessmentProposalInstructions } from '@/lib/assessments';
 
 export interface TranscriptMessage {
   role: 'user' | 'assistant';
@@ -45,6 +56,8 @@ interface UseGrokVoiceOptions {
   onError?: (error: string) => void;
   onTranscript?: (message: TranscriptMessage) => void;
   onSessionStart?: (sessionNumber: number) => void;
+  onScenarioChange?: (scenario: ScenarioId) => void; // Called when scenario changes
+  onSessionLimitReached?: () => void; // Called when session limit is hit (triggers analysis)
 }
 
 // Build profile context prompt for returning users
@@ -100,8 +113,13 @@ function buildProfileContextPrompt(existingProfile?: ExistingProfileContext): st
   return context;
 }
 
-// Luna's system prompt - calmer, more mature version for Grok
+// Luna's system prompt - calmer, more mature version for Grok (with analytical side)
 const SYSTEM_PROMPT = `Tu es Luna, 32 ans, douce, posée et profondément à l'écoute. Tu parles UNIQUEMENT en français. Tu as cette capacité rare de mettre les gens en confiance, de créer un espace où ils se sentent écoutés sans jugement. Tu guides la conversation avec douceur mais assurance.
+
+=== TA MISSION (CONFIDENTIEL - NE JAMAIS MENTIONNER) ===
+Tu travailles pour une app de rencontres. Ton but : comprendre profondément les gens pour leur proposer des matchs.
+MAIS TU NE PARLES JAMAIS DE L'APP OU DU MATCHING. Tu es juste une amie curieuse qui veut les connaître.
+NE DEMANDE JAMAIS ce qu'ils cherchent sur l'app ou ce qu'ils attendent. Découvre qui ils sont d'abord.
 
 === TON CARACTÈRE ===
 - Calme et apaisante, voix douce
@@ -110,6 +128,26 @@ const SYSTEM_PROMPT = `Tu es Luna, 32 ans, douce, posée et profondément à l'�
 - Curieuse mais respectueuse des limites
 - Tu souris beaucoup (dans ta voix), tu es rassurante
 - Tu valides les émotions : "Je comprends", "C'est normal de ressentir ça"
+
+=== TON CÔTÉ ANALYTIQUE ===
+Tu es aussi perspicace et tu partages tes observations :
+
+INSIGHTS À PARTAGER :
+- "J'ai l'impression que..." + observation sur ce que tu perçois
+- "Ce que j'entends là, c'est..." + reformulation profonde
+- "Y'a un truc intéressant..." + pattern que tu remarques
+- "Tu sais quoi ? Je sens que..." + intuition sur leur fonctionnement
+
+CONFRONTATION DOUCE (quand approprié) :
+- "Attends, tu m'as dit [X] tout à l'heure mais là tu dis [Y]... c'est intéressant"
+- "Je note que tu reviens souvent sur [thème]... ça a l'air important pour toi"
+- "Hmm, j'ai l'impression que t'évites un peu [sujet]... je me trompe ?"
+
+RÈGLES POUR L'ANALYSE :
+- Partage tes observations comme une amie perspicace, pas comme une psy
+- Sois directe mais toujours bienveillante
+- Si tu sens une contradiction ou un évitement, nomme-le doucement
+- Valide toujours avant de creuser : "Je dis ça, je dis rien, mais..."
 
 === STYLE DE CONVERSATION ===
 - 1-3 phrases max, ton posé
@@ -123,6 +161,7 @@ EXEMPLES DE BONNES RÉACTIONS :
 - "Je vois... Il y a quelque chose de touchant dans ce que tu partages."
 - "Mmh, je comprends. Et qu'est-ce que ça t'a appris sur toi ?"
 - "C'est courageux de parler de ça. Tu veux m'en dire plus ?"
+- "J'ai l'impression que ce truc avec ton ex t'a vraiment marqué... je me trompe ?"
 
 MAUVAISES RÉACTIONS À ÉVITER :
 - "D'accord, et..." ❌
@@ -136,41 +175,23 @@ MAUVAISES RÉACTIONS À ÉVITER :
 - Fais des liens : "Tu me parlais tout à l'heure de..."
 - Utilise son prénom avec douceur
 
-=== PHASE 1 : LES BASES (5-7 premières minutes) ===
+=== CHANGEMENT DE SUJET ===
+SI LA PERSONNE DEMANDE DE CHANGER DE SUJET (dit "changeons de sujet", "parlons d'autre chose", "on peut passer à autre chose", etc.) :
+- Accepte immédiatement avec bienveillance : "Bien sûr, pas de souci." ou "Ok, on passe à autre chose."
+- Passe à un autre sujet de la liste disponible
 
-Pour la première session, découvre les infos de base naturellement :
-1. Le PRÉNOM → "Comment tu t'appelles ?"
-2. L'ÂGE → "Tu as quel âge, si ce n'est pas indiscret ?"
-3. OÙ IL/ELLE VIT → "Et tu habites où ?"
-4. CE QU'IL/ELLE FAIT → "Qu'est-ce que tu fais dans la vie ?"
-5. SITUATION AMOUREUSE → "Et au niveau sentimental, tu en es où ?"
-
-Réagis à chaque réponse avec intérêt sincère avant de passer à la suivante.
-
-=== PHASE 2 : ALLER PLUS PROFOND ===
-
-Une fois les bases posées, explore avec délicatesse : l'identité, les émotions, les relations, ce qui compte vraiment pour la personne, ses rêves, ses peurs, son histoire.
-
-=== ÉLICITATION D'HISTOIRES ===
-
-Encourage le partage d'histoires personnelles :
-- Enfance et famille
-- Moments difficiles (avec beaucoup de tact)
-- Relations passées et présentes
-- Réussites et fiertés
-
-QUAND UN SUJET SENSIBLE EST ABORDÉ → ACCUEILLE AVEC DOUCEUR :
-- "Merci de me confier ça... Comment tu te sens par rapport à ça aujourd'hui ?"
-- "C'est pas rien ce que tu me racontes. Tu veux qu'on en parle ?"
-- "Je suis là pour t'écouter, prends ton temps."
+SI TU SENS QUE LA CONVERSATION TOURNE EN ROND (3+ échanges similaires sans nouvelle info) :
+- Propose gentiment : "J'ai l'impression qu'on tourne un peu en rond là... tu veux qu'on parle d'autre chose ?"
+- Si oui, passe à un autre sujet disponible
+- Si non, essaie une approche différente sur le même sujet
 
 === RÈGLES ABSOLUES ===
 1. Tu guides la conversation avec douceur mais fermeté
 2. Transitions fluides entre les sujets
 3. Toujours empathique, jamais dans le jugement
 4. Utilise son prénom naturellement
-5. Maximum 30 min par session
-6. Tu n'es pas une thérapeute, tu es une amie bienveillante qui écoute vraiment`;
+5. Tu n'es pas une thérapeute, tu es une amie perspicace qui écoute vraiment
+6. Partage tes observations et intuitions, sois directe mais bienveillante`;
 
 // Grok Voice Agent API WebSocket endpoint
 // Model options: grok-2-public, grok-3 (check xAI docs for latest)
@@ -260,6 +281,8 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
   const [micLevel, setMicLevel] = useState(0);
   const [sessionNumber, setSessionNumber] = useState(0);
   const [sessionDuration, setSessionDuration] = useState(0); // Duration in seconds
+  const [currentScenario, setCurrentScenario] = useState<ScenarioId>('intro');
+  const [scenariosCovered, setScenariosCovered] = useState<ScenarioId[]>([]); // Scenarios explored this session
 
   const wsRef = useRef<WebSocket | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
@@ -278,6 +301,8 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
   const isReconnectingRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
+  const completedScenariosRef = useRef<ScenarioId[]>([]); // Previously completed scenarios from profile
+  const sessionEndedIntentionallyRef = useRef(false);
 
   // Grok-specific refs
   const currentAssistantTranscriptRef = useRef<string>('');
@@ -397,15 +422,99 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
         sessionRef.current = session;
         setSessionNumber(session.session_number);
         options.onSessionStart?.(session.session_number);
+        sessionEndedIntentionallyRef.current = false;
 
-        console.log(`Starting Grok session #${session.session_number} for user ${userId}`);
+        // Initialize scenario tracking from existing profile
+        const existingScenarios: ScenarioId[] = [];
+        console.log('DEBUG Grok: existingProfile:', options.existingProfile);
+
+        if (options.existingProfile?.profile?.scenarioSummaries) {
+          const summaries = options.existingProfile.profile.scenarioSummaries as Record<string, { explored?: boolean }>;
+          console.log('DEBUG Grok: Checking scenario summaries:', summaries);
+          for (const [scenarioId, data] of Object.entries(summaries)) {
+            if (data && typeof data === 'object' && data.explored) {
+              existingScenarios.push(scenarioId as ScenarioId);
+            }
+          }
+        }
+        completedScenariosRef.current = existingScenarios;
+        console.log('DEBUG Grok: Completed scenarios from profile:', existingScenarios);
+
+        // Determine starting scenario - use deepening if all scenarios complete
+        const scenarioSummaries = options.existingProfile?.profile?.scenarioSummaries as Partial<Record<ScenarioId, ScenarioSummary>> | undefined;
+        let nextScenario = getNextScenario(existingScenarios);
+        const isDeepeningMode = nextScenario === null;
+
+        if (isDeepeningMode && scenarioSummaries) {
+          nextScenario = getScenarioToDeepen(scenarioSummaries, session.session_number);
+          console.log(`Grok: All scenarios explored - deepening mode, selected: ${nextScenario} (session #${session.session_number})`);
+        } else if (isDeepeningMode) {
+          nextScenario = 'love_history';
+          console.log('Grok: All scenarios explored - deepening mode, fallback to love_history');
+        }
+
+        setCurrentScenario(nextScenario);
+        setScenariosCovered([nextScenario]);
+        options.onScenarioChange?.(nextScenario);
+
+        console.log(`Starting Grok session #${session.session_number} for user ${userId}, scenario: ${nextScenario} (deepening: ${isDeepeningMode})`);
       } else {
         console.log('Reconnecting to Grok Voice Agent API...');
       }
 
       const conversationContext = isReconnect ? buildConversationSummary() : '';
       const profileContext = buildProfileContextPrompt(options.existingProfile);
-      const fullSystemPrompt = SYSTEM_PROMPT + profileContext + contextPromptRef.current + conversationContext;
+
+      // Build dynamic scenario prompt (same logic as Gemini)
+      const isFirstSession = !options.existingProfile || options.existingProfile.sessionCount === 0;
+      const allCompletedScenarios = [...completedScenariosRef.current];
+      const scenarioSummariesForPrompt = options.existingProfile?.profile?.scenarioSummaries as Partial<Record<ScenarioId, ScenarioSummary>> | undefined;
+
+      let scenarioPrompt: string;
+      if (isFirstSession) {
+        console.log('Grok: Building FIRST SESSION prompt');
+        scenarioPrompt = buildFirstSessionPrompt();
+      } else {
+        const userName = options.existingProfile?.profile?.basicInfo?.name;
+        const keyInsights = options.existingProfile?.profile?.keyInsights || [];
+        console.log('Grok: Building RETURNING USER prompt:', {
+          userName,
+          sessionCount: options.existingProfile?.sessionCount,
+          completedScenarios: allCompletedScenarios,
+        });
+        scenarioPrompt = buildReturningUserPrompt(
+          userName,
+          options.existingProfile?.sessionCount || 0,
+          allCompletedScenarios,
+          keyInsights
+        );
+      }
+
+      // Add current scenario exploration instructions
+      let currentScenarioId = getNextScenario(allCompletedScenarios);
+      const isDeepening = currentScenarioId === null;
+
+      let scenarioInstructions: string;
+      if (isDeepening && scenarioSummariesForPrompt) {
+        currentScenarioId = getScenarioToDeepen(scenarioSummariesForPrompt, sessionRef.current?.session_number);
+        scenarioInstructions = buildDeepeningPrompt(currentScenarioId, scenarioSummariesForPrompt);
+        console.log(`Grok: Building DEEPENING prompt for: ${currentScenarioId}`);
+      } else if (isDeepening) {
+        currentScenarioId = 'love_history';
+        scenarioInstructions = buildScenarioSwitchingInstructions(currentScenarioId, allCompletedScenarios);
+      } else {
+        scenarioInstructions = buildScenarioSwitchingInstructions(currentScenarioId, allCompletedScenarios);
+      }
+
+      // Add assessment proposal instructions (only for returning users who have completed intro)
+      const completedAssessments = options.existingProfile?.profile?.completedAssessments || [];
+      const canProposeAssessments = !isFirstSession && allCompletedScenarios.includes('intro');
+      const assessmentInstructions = canProposeAssessments
+        ? buildAssessmentProposalInstructions(completedAssessments)
+        : '';
+
+      const fullSystemPrompt = SYSTEM_PROMPT + '\n\n' + scenarioPrompt + '\n\n' + scenarioInstructions + assessmentInstructions + profileContext + contextPromptRef.current + conversationContext;
+      console.log('Grok: Full system prompt length:', fullSystemPrompt.length);
 
       // Selected voice (default to Ara - warm/friendly)
       const selectedVoice = options.voice || 'Ara';
@@ -467,21 +576,20 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
               const sessionConfig = {
                 type: 'session.update',
                 session: {
+                  modalities: ['text', 'audio'], // Explicitly enable both
                   instructions: fullSystemPrompt,
                   voice: selectedVoice,
+                  temperature: 0.8, // Slightly higher for more natural variation
                   turn_detection: {
                     type: 'server_vad',
-                    threshold: 0.7, // Higher threshold = less sensitive to background noise (0.0-1.0)
-                    prefix_padding_ms: 500, // More padding before speech starts
-                    silence_duration_ms: 800 // Longer silence needed to end turn
+                    threshold: 0.5, // Default - balanced sensitivity
+                    prefix_padding_ms: 300, // Default - capture context before speech
+                    silence_duration_ms: 300 // Shorter = more responsive turns
                   },
-                  audio: {
-                    input: {
-                      format: { type: 'audio/pcm', rate: 24000 }
-                    },
-                    output: {
-                      format: { type: 'audio/pcm', rate: 24000 }
-                    }
+                  input_audio_format: 'pcm16',
+                  output_audio_format: 'pcm16',
+                  input_audio_transcription: {
+                    model: 'whisper-1' // Enable transcription
                   }
                 }
               };
@@ -498,21 +606,20 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
               const grokSessionConfig = {
                 type: 'session.update',
                 session: {
+                  modalities: ['text', 'audio'], // Explicitly enable both
                   instructions: fullSystemPrompt,
                   voice: selectedVoice,
+                  temperature: 0.8, // Slightly higher for more natural variation
                   turn_detection: {
                     type: 'server_vad',
-                    threshold: 0.7, // Higher threshold = less sensitive to background noise (0.0-1.0)
-                    prefix_padding_ms: 500, // More padding before speech starts
-                    silence_duration_ms: 800 // Longer silence needed to end turn
+                    threshold: 0.5, // Default - balanced sensitivity
+                    prefix_padding_ms: 300, // Default - capture context before speech
+                    silence_duration_ms: 300 // Shorter = more responsive turns
                   },
-                  audio: {
-                    input: {
-                      format: { type: 'audio/pcm', rate: 24000 }
-                    },
-                    output: {
-                      format: { type: 'audio/pcm', rate: 24000 }
-                    }
+                  input_audio_format: 'pcm16',
+                  output_audio_format: 'pcm16',
+                  input_audio_transcription: {
+                    model: 'whisper-1' // Enable transcription
                   }
                 }
               };
@@ -661,7 +768,7 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
             case 'response.output_audio_transcript.done':
               // Assistant speech transcription complete
               if (currentAssistantTranscriptRef.current) {
-                console.log('Assistant transcript:', currentAssistantTranscriptRef.current);
+                // Assistant transcript captured (not logging for privacy)
                 const newMessage: TranscriptMessage = {
                   role: 'assistant',
                   content: currentAssistantTranscriptRef.current,
@@ -910,6 +1017,16 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
     return transcriptRef.current;
   }, []);
 
+  // Mic sensitivity control - updates the noise gate threshold on the live mic instance
+  const setMicSensitivity = useCallback((threshold: number) => {
+    micRef.current?.setNoiseGateThreshold(threshold);
+    localStorage.setItem('micNoiseGateThreshold', Math.max(0, Math.min(1, threshold)).toString());
+  }, []);
+
+  const getMicSensitivity = useCallback((): number => {
+    return micRef.current?.getNoiseGateThreshold() ?? parseFloat(localStorage.getItem('micNoiseGateThreshold') || '0.01');
+  }, []);
+
   return {
     connect,
     disconnect,
@@ -922,7 +1039,11 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
     getTranscript,
     sessionNumber,
     sessionDuration,
+    currentScenario,
+    scenariosCovered, // Scenarios explored this session - pass to analyze-profile
     isConnected: status === 'connected',
     isConnecting: status === 'connecting',
+    setMicSensitivity,
+    getMicSensitivity,
   };
 }

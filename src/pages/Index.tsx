@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
-import { AuthScreen } from "@/components/AuthScreen";
-import { PrivacyDisclaimer } from "@/components/PrivacyDisclaimer";
-import { MicrophonePermission } from "@/components/MicrophonePermission";
 import { VoiceChat } from "@/components/VoiceChat";
 import { ProfileReport } from "@/components/ProfileReport";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 
-type AppStep = "welcome" | "auth" | "privacy" | "microphone" | "voiceChat" | "report" | "matching" | "chat";
+type AppStep = "welcome" | "voiceChat" | "report" | "matching";
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
@@ -17,7 +14,7 @@ const Index = () => {
   const { user } = useAuth();
 
   const handleAuthSuccess = () => {
-    setCurrentStep("privacy");
+    setCurrentStep("voiceChat");
   };
 
   const handleVoiceChatComplete = (data: any) => {
@@ -26,7 +23,6 @@ const Index = () => {
   };
 
   const handleTalkToLuna = () => {
-    // Increment key to force VoiceChat remount and reset its state
     setVoiceChatKey(prev => prev + 1);
     setCurrentStep("voiceChat");
   };
@@ -41,52 +37,7 @@ const Index = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <WelcomeScreen onStart={() => setCurrentStep("auth")} />
-        </motion.div>
-      )}
-
-      {currentStep === "auth" && (
-        <motion.div
-          key="auth"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <AuthScreen
-            onBack={() => setCurrentStep("welcome")}
-            onSuccess={handleAuthSuccess}
-          />
-        </motion.div>
-      )}
-
-      {currentStep === "privacy" && (
-        <motion.div
-          key="privacy"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <PrivacyDisclaimer
-            onAccept={() => setCurrentStep("microphone")}
-            onBack={() => setCurrentStep("welcome")}
-          />
-        </motion.div>
-      )}
-
-      {currentStep === "microphone" && (
-        <motion.div
-          key="microphone"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <MicrophonePermission
-            onPermissionGranted={() => setCurrentStep("voiceChat")}
-            onBack={() => setCurrentStep("privacy")}
-          />
+          <WelcomeScreen onSuccess={handleAuthSuccess} />
         </motion.div>
       )}
 
@@ -133,21 +84,21 @@ const Index = () => {
         >
           <div className="text-center">
             <motion.div
-              className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center"
+              className="w-24 h-24 mx-auto mb-6 rounded-full bg-cyan-500/10 flex items-center justify-center"
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
               <motion.div
-                className="w-16 h-16 rounded-full bg-primary/20"
+                className="w-16 h-16 rounded-full bg-cyan-500/20"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
               />
             </motion.div>
-            <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-              Finding Your Match
+            <h2 className="text-2xl font-display font-bold text-white mb-2">
+              Recherche en cours
             </h2>
-            <p className="text-muted-foreground">
-              Analyzing your conversation to find someone special...
+            <p className="text-white/50">
+              Analyse de votre profil pour trouver quelqu'un de spécial...
             </p>
           </div>
         </motion.div>

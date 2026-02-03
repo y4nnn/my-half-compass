@@ -43,10 +43,10 @@
     --radius: 1rem;
 
     /* Custom Echo tokens - Light mode */
-    --calm-gradient: linear-gradient(135deg, hsl(255 70% 60% / 0.08), hsl(220 70% 50% / 0.08));
-    --warm-gradient: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 98%));
-    --glow-soft: 0 8px 32px -8px hsl(255 70% 60% / 0.25);
-    --shadow-warm: 0 4px 20px -4px hsl(255 70% 60% / 0.2);
+    --calm-gradient: linear-gradient(135deg, hsl(210 20% 92% / 0.8), hsl(200 30% 88% / 0.6));
+    --warm-gradient: linear-gradient(160deg, hsl(215 15% 18%), hsl(205 20% 25%), hsl(195 25% 30%));
+    --glow-soft: 0 8px 32px -8px hsl(185 80% 55% / 0.35);
+    --shadow-warm: 0 4px 20px -4px hsl(185 80% 55% / 0.25);
 
     /* Animation tokens */
     --transition-gentle: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -93,10 +93,10 @@
     --ring: 255 70% 60%;
 
     /* Dark mode tokens */
-    --calm-gradient: linear-gradient(135deg, hsl(255 70% 60% / 0.15), hsl(220 70% 50% / 0.15));
-    --warm-gradient: linear-gradient(180deg, hsl(240 10% 8%), hsl(240 10% 6%));
-    --glow-soft: 0 8px 32px -8px hsl(255 70% 60% / 0.4);
-    --shadow-warm: 0 4px 20px -4px hsl(255 70% 60% / 0.3);
+    --calm-gradient: linear-gradient(135deg, hsl(210 15% 12% / 0.8), hsl(200 20% 15% / 0.6));
+    --warm-gradient: linear-gradient(160deg, hsl(215 15% 12%), hsl(205 18% 16%), hsl(195 20% 20%));
+    --glow-soft: 0 8px 32px -8px hsl(185 80% 55% / 0.4);
+    --shadow-warm: 0 4px 20px -4px hsl(185 80% 55% / 0.3);
 
     --sidebar-background: 240 10% 8%;
     --sidebar-foreground: 0 0% 95%;

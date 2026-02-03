@@ -14,9 +14,343 @@ import {
   ChevronDown,
   Mic,
   BookOpen,
-  Calendar
+  Calendar,
+  CheckCircle2,
+  Circle,
+  TrendingUp,
+  ClipboardList,
+  Lightbulb,
+  Puzzle,
+  HeartHandshake,
+  Scale
 } from "lucide-react";
 import { useState } from "react";
+
+// Scenario definitions for progress display (14 total: 4 required + 10 optional)
+const SCENARIO_ORDER: { id: string; name: string; required: boolean; sensitive?: boolean }[] = [
+  // Core scenarios (required)
+  { id: 'intro', name: 'Introduction', required: true },
+  { id: 'love_history', name: 'Histoire amoureuse', required: true },
+  { id: 'love_vision', name: "Vision de l'amour", required: true },
+  { id: 'values', name: 'Valeurs & identité', required: true },
+  // Standard exploration scenarios
+  { id: 'family', name: 'Famille & origines', required: false },
+  { id: 'emotions', name: 'Émotions & sensibilité', required: false },
+  { id: 'lifestyle', name: 'Mode de vie', required: false },
+  { id: 'dreams', name: 'Rêves & aspirations', required: false },
+  { id: 'wounds', name: 'Blessures & forces', required: false, sensitive: true },
+  // Deep exploration scenarios
+  { id: 'childhood', name: 'Enfance & construction', required: false, sensitive: true },
+  { id: 'work_career', name: 'Vie professionnelle', required: false },
+  { id: 'parenting', name: 'Parentalité & avenir', required: false, sensitive: true },
+  { id: 'traumas', name: 'Traumatismes & résilience', required: false, sensitive: true },
+  { id: 'sexuality', name: 'Intimité & connexion', required: false, sensitive: true },
+];
+
+interface ScenarioSummary {
+  explored?: boolean;
+  summary?: string;
+  keyFindings?: string[];
+  patterns?: string[];
+  confidence?: 'faible' | 'moyen' | 'élevé';
+}
+
+function ScenarioProgressCard({ scenarioSummaries }: { scenarioSummaries?: Record<string, ScenarioSummary> }) {
+  const summaries = scenarioSummaries || {};
+
+  const exploredCount = SCENARIO_ORDER.filter(s => summaries[s.id]?.explored).length;
+  const totalCount = SCENARIO_ORDER.length;
+  const progressPercent = Math.round((exploredCount / totalCount) * 100);
+
+  const getConfidenceColor = (confidence?: string) => {
+    switch (confidence) {
+      case 'élevé': return 'bg-green-500';
+      case 'moyen': return 'bg-amber-500';
+      case 'faible': return 'bg-gray-400';
+      default: return 'bg-gray-300';
+    }
+  };
+
+  const getConfidenceWidth = (confidence?: string) => {
+    switch (confidence) {
+      case 'élevé': return '100%';
+      case 'moyen': return '66%';
+      case 'faible': return '33%';
+      default: return '0%';
+    }
+  };
+
+  const getConfidenceLabel = (confidence?: string) => {
+    switch (confidence) {
+      case 'élevé': return 'Élevé';
+      case 'moyen': return 'Moyen';
+      case 'faible': return 'Faible';
+      default: return 'Non exploré';
+    }
+  };
+
+  return (
+    <motion.div
+      className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.02 }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <TrendingUp className="w-5 h-5 text-emerald-500" />
+          <h2 className="font-semibold text-foreground">Progression des sujets</h2>
+        </div>
+        <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+          {exploredCount}/{totalCount} ({progressPercent}%)
+        </span>
+      </div>
+
+      {/* Overall progress bar */}
+      <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
+        <motion.div
+          className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        />
+      </div>
+
+      {/* Individual scenarios */}
+      <div className="space-y-2.5">
+        {SCENARIO_ORDER.map((scenario) => {
+          const summary = summaries[scenario.id];
+          const isExplored = summary?.explored;
+          const confidence = summary?.confidence;
+
+          return (
+            <div key={scenario.id} className="flex items-center gap-3">
+              {/* Status icon */}
+              {isExplored ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              ) : (
+                <Circle className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+              )}
+
+              {/* Scenario name */}
+              <span className={`text-sm flex-1 ${isExplored ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {scenario.name}
+                {scenario.required && !isExplored && (
+                  <span className="text-xs text-amber-500 ml-1">*</span>
+                )}
+                {scenario.sensitive && (
+                  <span className="text-xs text-rose-400 ml-1" title="Sujet sensible">♡</span>
+                )}
+              </span>
+
+              {/* Confidence bar */}
+              <div className="w-20 flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${getConfidenceColor(confidence)}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: getConfidenceWidth(confidence) }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  />
+                </div>
+              </div>
+
+              {/* Confidence label */}
+              <span className={`text-xs w-16 text-right ${
+                isExplored ? 'text-muted-foreground' : 'text-muted-foreground/50'
+              }`}>
+                {getConfidenceLabel(confidence)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 pt-3 border-t border-border/30 flex flex-col gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span>* Requis</span>
+            <span className="text-rose-400">♡ Sensible</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span> Élevé
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> Moyen
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-gray-400"></span> Faible
+            </span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Assessment result type definitions
+interface AssessmentResult {
+  completed?: boolean;
+  result?: string;
+  explanation?: string;
+  confidence?: 'faible' | 'moyen' | 'élevé';
+  // Specific fields for different assessments
+  primary?: string;
+  secondary?: string;
+  givingStyle?: string;
+  anxietyScore?: string;
+  avoidanceScore?: string;
+  correctAnswers?: number;
+  totalQuestions?: number;
+  areasOfStrength?: string[];
+  valuesRevealed?: string[];
+}
+
+interface AssessmentResults {
+  attachment_style?: AssessmentResult;
+  love_language?: AssessmentResult;
+  conflict_style?: AssessmentResult;
+  emotional_intelligence?: AssessmentResult;
+  situational_judgment?: AssessmentResult;
+  logic_puzzles?: AssessmentResult;
+  general_culture?: AssessmentResult;
+}
+
+// Assessment display configuration
+const ASSESSMENT_CONFIG: { id: keyof AssessmentResults; name: string; icon: React.ElementType; color: string }[] = [
+  { id: 'attachment_style', name: "Style d'attachement", icon: HeartHandshake, color: 'text-pink-500' },
+  { id: 'love_language', name: "Langages de l'amour", icon: Heart, color: 'text-red-500' },
+  { id: 'conflict_style', name: "Gestion des conflits", icon: Scale, color: 'text-orange-500' },
+  { id: 'emotional_intelligence', name: "Intelligence émotionnelle", icon: Lightbulb, color: 'text-yellow-500' },
+  { id: 'situational_judgment', name: "Jugement situationnel", icon: Compass, color: 'text-blue-500' },
+  { id: 'logic_puzzles', name: "Raisonnement logique", icon: Puzzle, color: 'text-purple-500' },
+  { id: 'general_culture', name: "Culture générale", icon: BookOpen, color: 'text-teal-500' },
+];
+
+function AssessmentResultsCard({ assessmentResults }: { assessmentResults?: AssessmentResults }) {
+  if (!assessmentResults) return null;
+
+  // Filter to only show completed assessments
+  const completedAssessments = ASSESSMENT_CONFIG.filter(
+    config => assessmentResults[config.id]?.completed
+  );
+
+  if (completedAssessments.length === 0) return null;
+
+  return (
+    <motion.div
+      className="p-5 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/20"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.03 }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <ClipboardList className="w-5 h-5 text-violet-500" />
+          <h2 className="font-semibold text-foreground">Résultats des évaluations</h2>
+        </div>
+        <span className="text-sm font-medium text-violet-600 dark:text-violet-400">
+          {completedAssessments.length} test{completedAssessments.length > 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {completedAssessments.map((config) => {
+          const result = assessmentResults[config.id];
+          if (!result) return null;
+
+          const Icon = config.icon;
+
+          return (
+            <div
+              key={config.id}
+              className="p-3 rounded-xl bg-background/50 border border-border/30"
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 ${config.color}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-foreground">{config.name}</span>
+                    {result.confidence && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        result.confidence === 'élevé' ? 'bg-green-500/20 text-green-600' :
+                        result.confidence === 'moyen' ? 'bg-amber-500/20 text-amber-600' :
+                        'bg-gray-500/20 text-gray-600'
+                      }`}>
+                        {result.confidence}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Main result */}
+                  <div className="mb-1">
+                    <span className="text-sm font-semibold text-primary">
+                      {config.id === 'love_language' && result.primary
+                        ? `${result.primary}${result.secondary ? ` / ${result.secondary}` : ''}`
+                        : result.result}
+                    </span>
+                  </div>
+
+                  {/* Additional details based on assessment type */}
+                  {config.id === 'logic_puzzles' && result.correctAnswers !== undefined && (
+                    <p className="text-xs text-muted-foreground">
+                      {result.correctAnswers}/{result.totalQuestions || 4} réponses correctes
+                    </p>
+                  )}
+
+                  {config.id === 'love_language' && result.givingStyle && (
+                    <p className="text-xs text-muted-foreground">
+                      Donne l'amour par : {result.givingStyle}
+                    </p>
+                  )}
+
+                  {config.id === 'attachment_style' && (result.anxietyScore || result.avoidanceScore) && (
+                    <p className="text-xs text-muted-foreground">
+                      Anxiété: {result.anxietyScore || 'N/A'} • Évitement: {result.avoidanceScore || 'N/A'}
+                    </p>
+                  )}
+
+                  {/* Explanation */}
+                  {result.explanation && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {result.explanation}
+                    </p>
+                  )}
+
+                  {/* Values revealed for situational judgment */}
+                  {config.id === 'situational_judgment' && result.valuesRevealed && result.valuesRevealed.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {result.valuesRevealed.slice(0, 3).map((value, idx) => (
+                        <span key={idx} className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
+                          {value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Areas of strength for general culture */}
+                  {config.id === 'general_culture' && result.areasOfStrength && result.areasOfStrength.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {result.areasOfStrength.slice(0, 3).map((area, idx) => (
+                        <span key={idx} className="text-xs px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600">
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
 
 interface ProfileReportProps {
   profileData: any;
@@ -148,7 +482,9 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna }: Profil
     matchingKeywords,
     compatibilityFactors,
     dimensionsCovered,
-    dimensionsToExplore
+    dimensionsToExplore,
+    scenarioSummaries,
+    assessmentResults
   } = profileData || {};
 
   return (
@@ -171,6 +507,12 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna }: Profil
       </motion.div>
 
       <div className="px-4 py-6 pb-32 space-y-4">
+        {/* Scenario Progress */}
+        <ScenarioProgressCard scenarioSummaries={scenarioSummaries} />
+
+        {/* Assessment Results */}
+        <AssessmentResultsCard assessmentResults={assessmentResults} />
+
         {/* Conversation Journal */}
         {conversationJournal && (
           <motion.div

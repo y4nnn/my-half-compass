@@ -211,6 +211,7 @@ export class AudioPlaybackQueue {
 }
 
 // Microphone capture with configurable sample rate (default 16kHz for Gemini, 24kHz for xAI)
+// Includes a noise gate that silences audio below a configurable RMS threshold
 export class MicrophoneCapture {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
@@ -220,9 +221,27 @@ export class MicrophoneCapture {
   private source: MediaStreamAudioSourceNode | null = null;
   private processor: ScriptProcessorNode | null = null;
   private sampleRate: number;
+  private noiseGateThreshold: number; // RMS threshold below which audio is silenced (0..1)
 
   constructor(sampleRate: number = 16000) {
     this.sampleRate = sampleRate;
+    // Load saved threshold from localStorage, default 0.01 (very low - minimal gate)
+    const saved = localStorage.getItem('micNoiseGateThreshold');
+    this.noiseGateThreshold = saved ? parseFloat(saved) : 0.01;
+  }
+
+  /**
+   * Set the noise gate threshold (0..1).
+   * Audio with RMS below this value will be replaced with silence.
+   * 0 = no gate (all audio passes), 0.05 = moderate gate, 0.1+ = aggressive gate
+   */
+  setNoiseGateThreshold(threshold: number) {
+    this.noiseGateThreshold = Math.max(0, Math.min(1, threshold));
+    localStorage.setItem('micNoiseGateThreshold', this.noiseGateThreshold.toString());
+  }
+
+  getNoiseGateThreshold(): number {
+    return this.noiseGateThreshold;
   }
 
   async start(
@@ -244,14 +263,14 @@ export class MicrophoneCapture {
       });
 
       this.audioContext = new AudioContext({ sampleRate: this.sampleRate });
-      
+
       // Create a script processor for audio capture (AudioWorklet would be better but requires more setup)
       this.source = this.audioContext.createMediaStreamSource(this.stream);
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
-      
+
       this.processor.onaudioprocess = (e) => {
         if (!this.isCapturing) return;
-        
+
         const inputData = e.inputBuffer.getChannelData(0);
 
         // Simple RMS meter (0..1) for UI feedback
@@ -263,15 +282,23 @@ export class MicrophoneCapture {
         const rms = Math.sqrt(sum / inputData.length);
         this.onLevel?.(rms);
 
+        // Noise gate: if RMS is below threshold, send silence instead
+        if (rms < this.noiseGateThreshold) {
+          const silence = new Int16Array(inputData.length);
+          const base64 = pcmToBase64(silence);
+          this.onAudioData?.(base64);
+          return;
+        }
+
         const pcm = float32ToPcm16(inputData);
         const base64 = pcmToBase64(pcm);
-        
+
         this.onAudioData?.(base64);
       };
-      
+
       this.source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
-      
+
       this.isCapturing = true;
     } catch (error) {
       console.error('Error starting microphone capture:', error);
@@ -291,12 +318,12 @@ export class MicrophoneCapture {
       try { this.processor.disconnect(); } catch (_) {}
       this.processor = null;
     }
-    
+
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null;
     }
-    
+
     if (this.audioContext) {
       this.audioContext.close();
       this.audioContext = null;
