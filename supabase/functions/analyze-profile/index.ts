@@ -93,10 +93,10 @@ serve(async (req) => {
 
   try {
     const { transcript, existingProfile, sessionCount = 1, scenariosCovered = [] } = await req.json();
-    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
 
-    if (!GOOGLE_AI_API_KEY) {
-      throw new Error("GOOGLE_AI_API_KEY is not configured");
+    if (!XAI_API_KEY) {
+      throw new Error("XAI_API_KEY is not configured");
     }
 
     if (!transcript || transcript.length === 0) {
@@ -331,516 +331,288 @@ RÈGLES DE MISE À JOUR :
     ).join('\n\n');
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      'https://api.x.ai/v1/chat/completions',
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${XAI_API_KEY}`,
         },
         body: JSON.stringify({
-          contents: [
+          model: "grok-4-1-fast-reasoning",
+          messages: [
+            {
+              role: "system",
+              content: fullSystemPrompt
+            },
             {
               role: "user",
-              parts: [
-                { text: `${fullSystemPrompt}\n\nVoici la conversation à analyser :\n\n${transcriptText}` }
-              ]
+              content: `Voici la conversation à analyser :\n\n${transcriptText}\n\nAnalyse cette conversation et appelle la fonction create_psychological_profile avec le profil complet.`
             }
           ],
           tools: [
             {
-              functionDeclarations: [
-                {
-                  name: "create_psychological_profile",
-                  description: "Crée un profil psychologique complet basé sur les 12 dimensions",
-                  parameters: {
-                    type: "object",
-                    properties: {
-                      // Basic info
-                      basicInfo: {
-                        type: "object",
-                        properties: {
-                          name: { type: "string" },
-                          ageRange: { type: "string" },
-                          location: { type: "string" },
-                          occupation: { type: "string" },
-                          livingSituation: { type: "string" }
-                        }
-                      },
-
-                      // Dimension 1: Identity & Self-Concept
-                      identityAndSelfConcept: {
-                        type: "object",
-                        properties: {
-                          selfEsteemStability: { type: "string", description: "Stable vs fluctuante selon validation externe" },
-                          identityCoherence: { type: "string", description: "Valeurs claires et histoire cohérente vs fragmentée" },
-                          selfEfficacy: { type: "string", description: "Sentiment de pouvoir gérer vs impuissance" },
-                          locusOfControl: { type: "string", description: "Interne vs externe" },
-                          coreValues: { type: "array", items: { type: "string" } },
-                          meaningSource: { type: "string", description: "Sources de sens et de but" },
-                          growthMindset: { type: "string", description: "Croissance vs fixe" },
-                          moralIdentity: { type: "string", description: "Intégrité, culpabilité, réparation" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 2: Temperament
-                      temperament: {
-                        type: "object",
-                        properties: {
-                          emotionalIntensity: { type: "string", description: "Faible à élevée" },
-                          emotionalLability: { type: "string", description: "Humeur stable vs changeante" },
-                          threatSensitivity: { type: "string", description: "Hypervigilance, inquiétude" },
-                          rewardSensitivity: { type: "string", description: "Recherche nouveauté, excitation" },
-                          stressReactivity: { type: "string", description: "Montée rapide, récupération" },
-                          baselineArousal: { type: "string", description: "Calme vs activé par défaut" },
-                          frustrationTolerance: { type: "string", description: "Persévérance sous l'inconfort" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 3: Emotion Regulation
-                      emotionRegulation: {
-                        type: "object",
-                        properties: {
-                          emotionalAwareness: { type: "string", description: "Capacité à nommer les émotions" },
-                          adaptiveStrategies: { type: "array", items: { type: "string" }, description: "Réévaluation, résolution, acceptation, soutien" },
-                          maladaptiveStrategies: { type: "array", items: { type: "string" }, description: "Évitement, rumination, suppression" },
-                          impulseControl: { type: "string" },
-                          copingOrientation: { type: "string", description: "Problème vs émotion vs évitement" },
-                          resilience: { type: "string" },
-                          defenseMechanisms: { type: "array", items: { type: "string" } },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 4: Cognitive Style
-                      cognitiveStyle: {
-                        type: "object",
-                        properties: {
-                          analyticalVsIntuitive: { type: "string" },
-                          complexityTolerance: { type: "string", description: "Nuancé vs noir/blanc" },
-                          cognitiveFlexibility: { type: "string" },
-                          attentionControl: { type: "string" },
-                          metacognition: { type: "string", description: "Insight sur ses propres biais" },
-                          attributionStyle: { type: "string", description: "Interne/externe, stable/instable" },
-                          cognitiveDistortions: { type: "array", items: { type: "string" } },
-                          curiosityAndHumility: { type: "string" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 5: Motivation
-                      motivation: {
-                        type: "object",
-                        properties: {
-                          approachVsAvoidance: { type: "string" },
-                          needsProfile: { type: "object", properties: {
-                            autonomy: { type: "string" },
-                            competence: { type: "string" },
-                            relatedness: { type: "string" },
-                            security: { type: "string" },
-                            achievement: { type: "string" },
-                            novelty: { type: "string" }
-                          }},
-                          intrinsicVsExtrinsic: { type: "string" },
-                          timeHorizon: { type: "string", description: "Court terme vs long terme" },
-                          grit: { type: "string" },
-                          achievementStyle: { type: "string", description: "Maîtrise vs performance" },
-                          procrastinationType: { type: "string" },
-                          riskTolerance: { type: "string" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 6: Personality Traits
-                      personalityTraits: {
-                        type: "object",
-                        properties: {
-                          neuroticism: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
-                          extraversion: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
-                          openness: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
-                          agreeableness: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
-                          conscientiousness: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
-                          honestyHumility: { type: "string" },
-                          perfectionism: { type: "string" },
-                          sensationSeeking: { type: "string" },
-                          traitEmpathy: { type: "string" },
-                          assertivenessStyle: { type: "string", description: "Passif / assertif / agressif" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 7: Interpersonal Style
-                      interpersonalStyle: {
-                        type: "object",
-                        properties: {
-                          attachmentPattern: { type: "string", description: "Sécure / anxieux / évitant / désorganisé" },
-                          trustStyle: { type: "string" },
-                          communicationStyle: { type: "string", description: "Direct/indirect, expressif/réservé" },
-                          conflictStyle: { type: "string", description: "Évitement / accommodation / compétition / compromis / collaboration" },
-                          boundaryQuality: { type: "string", description: "Poreuses / rigides / saines" },
-                          empathyAndMentalization: { type: "string" },
-                          socialReciprocity: { type: "string" },
-                          influenceStyle: { type: "string" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 8: Social Cognition & Worldview
-                      socialCognition: {
-                        type: "object",
-                        properties: {
-                          beliefsAboutPeople: { type: "string", description: "Bons vs dangereux/égoïstes" },
-                          justiceSensitivity: { type: "string" },
-                          powerDistanceOrientation: { type: "string" },
-                          ingroupOutgroupBias: { type: "string" },
-                          cynicismVsIdealism: { type: "string" },
-                          conspiracyProneness: { type: "string" },
-                          toleranceForDifference: { type: "string" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 9: Behavioral Patterns
-                      behavioralPatterns: {
-                        type: "object",
-                        properties: {
-                          routineStability: { type: "string" },
-                          selfCareReliability: { type: "string" },
-                          habitLoops: { type: "array", items: { type: "string" } },
-                          addictiveTendencies: { type: "string" },
-                          angerExpression: { type: "string" },
-                          responsibilityPatterns: { type: "string", description: "Ownership vs blâme" },
-                          consistency: { type: "string", description: "Fiabilité, ponctualité, promesses" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 10: Strengths & Protective Factors
-                      strengthsAndProtectiveFactors: {
-                        type: "object",
-                        properties: {
-                          characterStrengths: { type: "array", items: { type: "string" } },
-                          socialSupports: { type: "string" },
-                          skillsRepertoire: { type: "array", items: { type: "string" } },
-                          meaningSystems: { type: "string" },
-                          adaptiveIdentity: { type: "string", description: "Peut intégrer l'échec" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 11: Vulnerabilities
-                      vulnerabilities: {
-                        type: "object",
-                        properties: {
-                          chronicDysregulation: { type: "string" },
-                          rigidPatterns: { type: "string" },
-                          traumaIndicators: { type: "string" },
-                          fragilityZones: { type: "array", items: { type: "string" } },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Dimension 12: Developmental & Contextual Factors
-                      developmentalFactors: {
-                        type: "object",
-                        properties: {
-                          earlyEnvironment: { type: "string" },
-                          learningHistory: { type: "string" },
-                          culturalContext: { type: "string" },
-                          lifeEvents: { type: "array", items: { type: "string" } },
-                          currentEnvironment: { type: "string" },
-                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                        }
-                      },
-
-                      // Relationship specific
-                      relationshipProfile: {
-                        type: "object",
-                        properties: {
-                          loveLanguages: { type: "array", items: { type: "string" } },
-                          dealBreakers: { type: "array", items: { type: "string" } },
-                          idealPartnerQualities: { type: "array", items: { type: "string" } },
-                          relationshipGoals: { type: "string" },
-                          pastRelationshipPatterns: { type: "string" }
-                        }
-                      },
-
-                      // Conversation Journal - Summary of all discussions
-                      conversationJournal: {
-                        type: "object",
-                        properties: {
-                          sessions: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                sessionNumber: { type: "number" },
-                                date: { type: "string", description: "Date de la session (ISO format)" },
-                                topicsDiscussed: { type: "array", items: { type: "string" }, description: "Principaux sujets abordés" },
-                                keyMoments: { type: "array", items: { type: "string" }, description: "Moments clés ou révélations importantes" },
-                                emotionalTone: { type: "string", description: "Ton émotionnel général de la session" },
-                                briefSummary: { type: "string", description: "Résumé bref de la session (2-3 phrases)" }
-                              }
-                            },
-                            description: "Entrées du journal pour chaque session"
-                          },
-                          cumulativeNarrative: { type: "string", description: "Récit cumulatif de l'évolution de la personne à travers les sessions" },
-                          recurringThemes: { type: "array", items: { type: "string" }, description: "Thèmes récurrents observés à travers les sessions" },
-                          progressionNotes: { type: "string", description: "Notes sur l'évolution et les changements observés au fil des sessions" }
-                        }
-                      },
-
-                      // Scenario-based summaries - one entry per explored scenario
-                      scenarioSummaries: {
-                        type: "object",
-                        description: "Résumés par scénario exploré",
-                        properties: {
-                          intro: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Ce qu'on a appris sur les bases" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          love_history: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Ce qu'on a appris sur l'historique amoureux" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              patterns: { type: "array", items: { type: "string" }, description: "Patterns répétitifs observés" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          love_vision: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Vision de l'amour et attentes" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          values: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Valeurs et identité" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          family: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Famille et origines" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          emotions: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Rapport aux émotions" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          lifestyle: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Mode de vie et énergie" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          dreams: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Rêves et aspirations" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          wounds: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Blessures et forces (si abordé)" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          // Deep exploration scenarios
-                          childhood: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Enfance et construction de soi" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          traumas: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Traumatismes et résilience" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          work_career: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Vie professionnelle et ambitions" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          parenting: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Parentalité et vision de l'avenir" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          sexuality: {
-                            type: "object",
-                            properties: {
-                              explored: { type: "boolean" },
-                              summary: { type: "string", description: "Intimité et connexion physique" },
-                              keyFindings: { type: "array", items: { type: "string" } },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          }
-                        }
-                      },
-
-                      // Assessment results - scored tests and evaluations
-                      assessmentResults: {
-                        type: "object",
-                        description: "Résultats des évaluations/tests passés",
-                        properties: {
-                          attachment_style: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              result: { type: "string", description: "Sécure, Anxieux, Évitant, ou Anxieux-Évitant" },
-                              anxietyScore: { type: "string", description: "Faible, Moyen, Élevé" },
-                              avoidanceScore: { type: "string", description: "Faible, Moyen, Élevé" },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          love_language: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              primary: { type: "string", description: "Langage principal pour recevoir" },
-                              secondary: { type: "string", description: "Langage secondaire" },
-                              givingStyle: { type: "string", description: "Comment la personne donne l'amour" },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          conflict_style: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              result: { type: "string", description: "Collaboratif, Compétitif, Accommodant, Évitant, ou Compromis" },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          emotional_intelligence: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              result: { type: "string", description: "IE Faible, IE Moyenne, ou IE Élevée" },
-                              selfAwareness: { type: "string" },
-                              selfRegulation: { type: "string" },
-                              empathy: { type: "string" },
-                              socialSkills: { type: "string" },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          situational_judgment: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              result: { type: "string", description: "Principiel, Pragmatique, Loyal, ou Indépendant" },
-                              valuesRevealed: { type: "array", items: { type: "string" } },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          logic_puzzles: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              result: { type: "string", description: "Excellent, Bon, Moyen, ou À développer" },
-                              correctAnswers: { type: "number" },
-                              totalQuestions: { type: "number" },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          },
-                          general_culture: {
-                            type: "object",
-                            properties: {
-                              completed: { type: "boolean" },
-                              result: { type: "string", description: "Très cultivé, Bonne culture, Culture moyenne, ou En développement" },
-                              areasOfStrength: { type: "array", items: { type: "string" } },
-                              explanation: { type: "string" },
-                              confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
-                            }
-                          }
-                        }
-                      },
-
-                      // Track which assessments have been completed
-                      completedAssessments: { type: "array", items: { type: "string" }, description: "IDs des assessments complétés" },
-
-                      // Summary & Matching
-                      overallSummary: { type: "string", description: "Résumé narratif du profil psychologique" },
-                      keyInsights: { type: "array", items: { type: "string" }, description: "Insights clés sur la personne" },
-                      contradictionsObserved: { type: "array", items: { type: "string" }, description: "Contradictions ou incohérences notées" },
-                      matchingKeywords: { type: "array", items: { type: "string" } },
-                      compatibilityFactors: { type: "array", items: { type: "string" } },
-                      dimensionsCovered: { type: "array", items: { type: "string" }, description: "Dimensions suffisamment évaluées" },
-                      dimensionsToExplore: { type: "array", items: { type: "string" }, description: "Dimensions nécessitant plus d'exploration" }
+              type: "function",
+              function: {
+                name: "create_psychological_profile",
+                description: "Crée un profil psychologique complet basé sur les 12 dimensions",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    basicInfo: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        ageRange: { type: "string" },
+                        location: { type: "string" },
+                        occupation: { type: "string" },
+                        livingSituation: { type: "string" }
+                      }
                     },
-                    required: ["basicInfo", "personalityTraits", "overallSummary", "matchingKeywords", "dimensionsCovered", "dimensionsToExplore"]
-                  }
+                    identityAndSelfConcept: {
+                      type: "object",
+                      properties: {
+                        selfEsteemStability: { type: "string", description: "Stable vs fluctuante selon validation externe" },
+                        identityCoherence: { type: "string", description: "Valeurs claires et histoire cohérente vs fragmentée" },
+                        selfEfficacy: { type: "string", description: "Sentiment de pouvoir gérer vs impuissance" },
+                        locusOfControl: { type: "string", description: "Interne vs externe" },
+                        coreValues: { type: "array", items: { type: "string" } },
+                        meaningSource: { type: "string", description: "Sources de sens et de but" },
+                        growthMindset: { type: "string", description: "Croissance vs fixe" },
+                        moralIdentity: { type: "string", description: "Intégrité, culpabilité, réparation" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    temperament: {
+                      type: "object",
+                      properties: {
+                        emotionalIntensity: { type: "string", description: "Faible à élevée" },
+                        emotionalLability: { type: "string", description: "Humeur stable vs changeante" },
+                        threatSensitivity: { type: "string", description: "Hypervigilance, inquiétude" },
+                        rewardSensitivity: { type: "string", description: "Recherche nouveauté, excitation" },
+                        stressReactivity: { type: "string", description: "Montée rapide, récupération" },
+                        baselineArousal: { type: "string", description: "Calme vs activé par défaut" },
+                        frustrationTolerance: { type: "string", description: "Persévérance sous l'inconfort" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    emotionRegulation: {
+                      type: "object",
+                      properties: {
+                        emotionalAwareness: { type: "string", description: "Capacité à nommer les émotions" },
+                        adaptiveStrategies: { type: "array", items: { type: "string" }, description: "Réévaluation, résolution, acceptation, soutien" },
+                        maladaptiveStrategies: { type: "array", items: { type: "string" }, description: "Évitement, rumination, suppression" },
+                        impulseControl: { type: "string" },
+                        copingOrientation: { type: "string", description: "Problème vs émotion vs évitement" },
+                        resilience: { type: "string" },
+                        defenseMechanisms: { type: "array", items: { type: "string" } },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    cognitiveStyle: {
+                      type: "object",
+                      properties: {
+                        analyticalVsIntuitive: { type: "string" },
+                        complexityTolerance: { type: "string", description: "Nuancé vs noir/blanc" },
+                        cognitiveFlexibility: { type: "string" },
+                        attentionControl: { type: "string" },
+                        metacognition: { type: "string", description: "Insight sur ses propres biais" },
+                        attributionStyle: { type: "string", description: "Interne/externe, stable/instable" },
+                        cognitiveDistortions: { type: "array", items: { type: "string" } },
+                        curiosityAndHumility: { type: "string" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    motivation: {
+                      type: "object",
+                      properties: {
+                        approachVsAvoidance: { type: "string" },
+                        needsProfile: { type: "object", properties: {
+                          autonomy: { type: "string" },
+                          competence: { type: "string" },
+                          relatedness: { type: "string" },
+                          security: { type: "string" },
+                          achievement: { type: "string" },
+                          novelty: { type: "string" }
+                        }},
+                        intrinsicVsExtrinsic: { type: "string" },
+                        timeHorizon: { type: "string", description: "Court terme vs long terme" },
+                        grit: { type: "string" },
+                        achievementStyle: { type: "string", description: "Maîtrise vs performance" },
+                        procrastinationType: { type: "string" },
+                        riskTolerance: { type: "string" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    personalityTraits: {
+                      type: "object",
+                      properties: {
+                        neuroticism: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
+                        extraversion: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
+                        openness: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
+                        agreeableness: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
+                        conscientiousness: { type: "object", properties: { score: { type: "number" }, explanation: { type: "string" } } },
+                        honestyHumility: { type: "string" },
+                        perfectionism: { type: "string" },
+                        sensationSeeking: { type: "string" },
+                        traitEmpathy: { type: "string" },
+                        assertivenessStyle: { type: "string", description: "Passif / assertif / agressif" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    interpersonalStyle: {
+                      type: "object",
+                      properties: {
+                        attachmentPattern: { type: "string", description: "Sécure / anxieux / évitant / désorganisé" },
+                        trustStyle: { type: "string" },
+                        communicationStyle: { type: "string", description: "Direct/indirect, expressif/réservé" },
+                        conflictStyle: { type: "string", description: "Évitement / accommodation / compétition / compromis / collaboration" },
+                        boundaryQuality: { type: "string", description: "Poreuses / rigides / saines" },
+                        empathyAndMentalization: { type: "string" },
+                        socialReciprocity: { type: "string" },
+                        influenceStyle: { type: "string" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    socialCognition: {
+                      type: "object",
+                      properties: {
+                        beliefsAboutPeople: { type: "string", description: "Bons vs dangereux/égoïstes" },
+                        justiceSensitivity: { type: "string" },
+                        powerDistanceOrientation: { type: "string" },
+                        ingroupOutgroupBias: { type: "string" },
+                        cynicismVsIdealism: { type: "string" },
+                        conspiracyProneness: { type: "string" },
+                        toleranceForDifference: { type: "string" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    behavioralPatterns: {
+                      type: "object",
+                      properties: {
+                        routineStability: { type: "string" },
+                        selfCareReliability: { type: "string" },
+                        habitLoops: { type: "array", items: { type: "string" } },
+                        addictiveTendencies: { type: "string" },
+                        angerExpression: { type: "string" },
+                        responsibilityPatterns: { type: "string", description: "Ownership vs blâme" },
+                        consistency: { type: "string", description: "Fiabilité, ponctualité, promesses" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    strengthsAndProtectiveFactors: {
+                      type: "object",
+                      properties: {
+                        characterStrengths: { type: "array", items: { type: "string" } },
+                        socialSupports: { type: "string" },
+                        skillsRepertoire: { type: "array", items: { type: "string" } },
+                        meaningSystems: { type: "string" },
+                        adaptiveIdentity: { type: "string", description: "Peut intégrer l'échec" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    vulnerabilities: {
+                      type: "object",
+                      properties: {
+                        chronicDysregulation: { type: "string" },
+                        rigidPatterns: { type: "string" },
+                        traumaIndicators: { type: "string" },
+                        fragilityZones: { type: "array", items: { type: "string" } },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    developmentalFactors: {
+                      type: "object",
+                      properties: {
+                        earlyEnvironment: { type: "string" },
+                        learningHistory: { type: "string" },
+                        culturalContext: { type: "string" },
+                        lifeEvents: { type: "array", items: { type: "string" } },
+                        currentEnvironment: { type: "string" },
+                        confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                      }
+                    },
+                    relationshipProfile: {
+                      type: "object",
+                      properties: {
+                        loveLanguages: { type: "array", items: { type: "string" } },
+                        dealBreakers: { type: "array", items: { type: "string" } },
+                        idealPartnerQualities: { type: "array", items: { type: "string" } },
+                        relationshipGoals: { type: "string" },
+                        pastRelationshipPatterns: { type: "string" }
+                      }
+                    },
+                    conversationJournal: {
+                      type: "object",
+                      properties: {
+                        sessions: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              sessionNumber: { type: "number" },
+                              date: { type: "string", description: "Date de la session (ISO format)" },
+                              topicsDiscussed: { type: "array", items: { type: "string" } },
+                              keyMoments: { type: "array", items: { type: "string" } },
+                              emotionalTone: { type: "string" },
+                              briefSummary: { type: "string" }
+                            }
+                          }
+                        },
+                        cumulativeNarrative: { type: "string" },
+                        recurringThemes: { type: "array", items: { type: "string" } },
+                        progressionNotes: { type: "string" }
+                      }
+                    },
+                    scenarioSummaries: {
+                      type: "object",
+                      description: "Résumés par scénario exploré. Chaque clé est un ID de scénario (intro, love_history, love_vision, values, family, emotions, lifestyle, dreams, wounds, childhood, traumas, work_career, parenting, sexuality)",
+                      additionalProperties: {
+                        type: "object",
+                        properties: {
+                          explored: { type: "boolean" },
+                          summary: { type: "string" },
+                          keyFindings: { type: "array", items: { type: "string" } },
+                          patterns: { type: "array", items: { type: "string" } },
+                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                        }
+                      }
+                    },
+                    assessmentResults: {
+                      type: "object",
+                      description: "Résultats des évaluations/tests passés",
+                      additionalProperties: {
+                        type: "object",
+                        properties: {
+                          completed: { type: "boolean" },
+                          result: { type: "string" },
+                          explanation: { type: "string" },
+                          confidence: { type: "string", enum: ["faible", "moyen", "élevé"] }
+                        }
+                      }
+                    },
+                    completedAssessments: { type: "array", items: { type: "string" } },
+                    overallSummary: { type: "string" },
+                    keyInsights: { type: "array", items: { type: "string" } },
+                    contradictionsObserved: { type: "array", items: { type: "string" } },
+                    matchingKeywords: { type: "array", items: { type: "string" } },
+                    compatibilityFactors: { type: "array", items: { type: "string" } },
+                    dimensionsCovered: { type: "array", items: { type: "string" } },
+                    dimensionsToExplore: { type: "array", items: { type: "string" } }
+                  },
+                  required: ["basicInfo", "personalityTraits", "overallSummary", "matchingKeywords", "dimensionsCovered", "dimensionsToExplore"]
                 }
-              ]
+              }
             }
           ],
-          toolConfig: {
-            functionCallingConfig: {
-              mode: "ANY",
-              allowedFunctionNames: ["create_psychological_profile"]
-            }
-          }
+          tool_choice: { type: "function", function: { name: "create_psychological_profile" } }
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Google AI API error:", response.status, errorText);
+      console.error("xAI API error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
@@ -855,16 +627,16 @@ RÈGLES DE MISE À JOUR :
         });
       }
 
-      throw new Error(`Google AI API error: ${response.status}`);
+      throw new Error(`xAI API error: ${response.status}`);
     }
 
     const data = await response.json();
     console.log("AI response received");
 
-    // Extract the function call from Google's response format
-    const functionCall = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
-    if (functionCall?.name === "create_psychological_profile" && functionCall?.args) {
-      const profile = functionCall.args;
+    // Extract the function call from OpenAI-compatible response format
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.name === "create_psychological_profile" && toolCall?.function?.arguments) {
+      const profile = JSON.parse(toolCall.function.arguments);
 
       // Process scenarioSummaries - trust the LLM's detection but also preserve existing data
       const scenarioSummaries = profile.scenarioSummaries || {};
@@ -921,7 +693,7 @@ RÈGLES DE MISE À JOUR :
           sessionCount: sessionCount,
           lastUpdated: new Date().toISOString(),
           isUpdate: isUpdate,
-          model: 'gemini-2.5-flash'
+          model: 'grok-4-1-fast-reasoning'
         }
       };
 

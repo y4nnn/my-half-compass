@@ -13,12 +13,12 @@ serve(async (req) => {
 
   try {
     const { sessionId, userId } = await req.json();
-    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!GOOGLE_AI_API_KEY) {
-      throw new Error("GOOGLE_AI_API_KEY is not configured");
+    if (!XAI_API_KEY) {
+      throw new Error("XAI_API_KEY is not configured");
     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -101,133 +101,131 @@ Sois minutieux sur les traumas et épreuves - ce sont des informations CRUCIALES
     ).join('\n\n');
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      'https://api.x.ai/v1/chat/completions',
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${XAI_API_KEY}`,
         },
         body: JSON.stringify({
-          contents: [
+          model: "grok-4-1-fast-reasoning",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
             {
               role: "user",
-              parts: [
-                { text: `${systemPrompt}\n\nVoici la conversation à analyser :\n\n${transcriptText}` }
-              ]
+              content: `Voici la conversation à analyser :\n\n${transcriptText}\n\nAnalyse cette conversation et appelle la fonction create_session_summary avec le résumé structuré.`
             }
           ],
           tools: [
             {
-              functionDeclarations: [
-                {
-                  name: "create_session_summary",
-                  description: "Crée un résumé structuré de la conversation avec focus sur les dimensions psychologiques",
-                  parameters: {
-                    type: "object",
-                    properties: {
-                      user_name: {
-                        type: "string",
-                        description: "Le prénom de l'utilisateur s'il a été mentionné"
-                      },
-                      topics_covered: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Liste des sujets abordés durant la conversation"
-                      },
-                      key_revelations: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Informations importantes révélées sur l'utilisateur"
-                      },
-                      stories_shared: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            type: { type: "string", description: "enfance/famille/relation/travail/autre" },
-                            summary: { type: "string", description: "Résumé de l'histoire" },
-                            emotional_tone: { type: "string", description: "positif/neutre/négatif/mixte" }
-                          }
-                        },
-                        description: "Histoires et souvenirs racontés par l'utilisateur"
-                      },
-                      traumas_and_hardships: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            type: { type: "string", description: "violence/abandon/deuil/harcèlement/trahison/échec/abus/négligence/autre" },
-                            context: { type: "string", description: "enfance/adolescence/relation_amoureuse/famille/travail/école/autre" },
-                            description: { type: "string", description: "Description de l'épreuve" },
-                            impact_described: { type: "string", description: "Impact décrit par l'utilisateur" },
-                            severity: { type: "string", enum: ["léger", "modéré", "sévère", "non_déterminé"] },
-                            matching_relevance: { type: "string", description: "Pourquoi c'est important pour le matching" }
-                          }
-                        },
-                        description: "Traumas et épreuves mentionnés - CRUCIAL pour le matching"
-                      },
-                      dimensions_covered: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Dimensions psychologiques (1-12) abordées dans cette session"
-                      },
-                      dimensions_to_explore: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Dimensions psychologiques pas encore explorées"
-                      },
-                      emotional_moments: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Moments émotionnels ou sujets sensibles abordés"
-                      },
-                      summary_for_context: {
-                        type: "string",
-                        description: "Résumé concis (2-3 phrases) pour le contexte de la prochaine session"
-                      },
-                      topics_to_explore: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Sujets spécifiques à explorer dans les prochaines sessions"
-                      },
-                      red_flags_for_matching: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Red flags identifiés qui affecteront le matching (violence, abus, patterns toxiques)"
-                      },
-                      positive_indicators: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Indicateurs positifs pour le matching (résilience, ouverture, maturité)"
-                      }
+              type: "function",
+              function: {
+                name: "create_session_summary",
+                description: "Crée un résumé structuré de la conversation avec focus sur les dimensions psychologiques",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    user_name: {
+                      type: "string",
+                      description: "Le prénom de l'utilisateur s'il a été mentionné"
                     },
-                    required: ["topics_covered", "key_revelations", "summary_for_context", "dimensions_covered", "dimensions_to_explore"]
-                  }
+                    topics_covered: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Liste des sujets abordés durant la conversation"
+                    },
+                    key_revelations: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Informations importantes révélées sur l'utilisateur"
+                    },
+                    stories_shared: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          type: { type: "string", description: "enfance/famille/relation/travail/autre" },
+                          summary: { type: "string", description: "Résumé de l'histoire" },
+                          emotional_tone: { type: "string", description: "positif/neutre/négatif/mixte" }
+                        }
+                      },
+                      description: "Histoires et souvenirs racontés par l'utilisateur"
+                    },
+                    traumas_and_hardships: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          type: { type: "string", description: "violence/abandon/deuil/harcèlement/trahison/échec/abus/négligence/autre" },
+                          context: { type: "string", description: "enfance/adolescence/relation_amoureuse/famille/travail/école/autre" },
+                          description: { type: "string", description: "Description de l'épreuve" },
+                          impact_described: { type: "string", description: "Impact décrit par l'utilisateur" },
+                          severity: { type: "string", enum: ["léger", "modéré", "sévère", "non_déterminé"] },
+                          matching_relevance: { type: "string", description: "Pourquoi c'est important pour le matching" }
+                        }
+                      },
+                      description: "Traumas et épreuves mentionnés - CRUCIAL pour le matching"
+                    },
+                    dimensions_covered: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Dimensions psychologiques (1-12) abordées dans cette session"
+                    },
+                    dimensions_to_explore: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Dimensions psychologiques pas encore explorées"
+                    },
+                    emotional_moments: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Moments émotionnels ou sujets sensibles abordés"
+                    },
+                    summary_for_context: {
+                      type: "string",
+                      description: "Résumé concis (2-3 phrases) pour le contexte de la prochaine session"
+                    },
+                    topics_to_explore: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Sujets spécifiques à explorer dans les prochaines sessions"
+                    },
+                    red_flags_for_matching: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Red flags identifiés qui affecteront le matching (violence, abus, patterns toxiques)"
+                    },
+                    positive_indicators: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Indicateurs positifs pour le matching (résilience, ouverture, maturité)"
+                    }
+                  },
+                  required: ["topics_covered", "key_revelations", "summary_for_context", "dimensions_covered", "dimensions_to_explore"]
                 }
-              ]
+              }
             }
           ],
-          toolConfig: {
-            functionCallingConfig: {
-              mode: "ANY",
-              allowedFunctionNames: ["create_session_summary"]
-            }
-          }
+          tool_choice: { type: "function", function: { name: "create_session_summary" } }
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Google AI API error:", response.status, errorText);
-      throw new Error(`Google AI API error: ${response.status}`);
+      console.error("xAI API error:", response.status, errorText);
+      throw new Error(`xAI API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const functionCall = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
-    if (functionCall?.name === "create_session_summary" && functionCall?.args) {
-      const summary = functionCall.args;
+    if (toolCall?.function?.name === "create_session_summary" && toolCall?.function?.arguments) {
+      const summary = JSON.parse(toolCall.function.arguments);
       console.log("Summary generated:", summary);
 
       // Build extended key_revelations that includes trauma info
@@ -273,7 +271,7 @@ Sois minutieux sur les traumas et épreuves - ce sont des informations CRUCIALES
       });
     }
 
-    throw new Error("Failed to extract summary from AI response");
+    throw new Error("Failed to extract summary from xAI response");
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     console.error("Error generating summary:", errorMessage);
