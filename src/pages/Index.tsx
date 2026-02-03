@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { VoiceChat } from "@/components/VoiceChat";
 import { ProfileReport } from "@/components/ProfileReport";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-type AppStep = "welcome" | "voiceChat" | "report" | "matching";
+type AppStep = "welcome" | "voiceChat" | "report" | "profileView" | "matching";
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
   const [profileData, setProfileData] = useState<any>(null);
   const [voiceChatKey, setVoiceChatKey] = useState(0);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const handleAuthSuccess = () => {
     setCurrentStep("voiceChat");
@@ -25,6 +26,28 @@ const Index = () => {
   const handleTalkToLuna = () => {
     setVoiceChatKey(prev => prev + 1);
     setCurrentStep("voiceChat");
+  };
+
+  const handleViewProfile = async () => {
+    if (!user) return;
+
+    // Load existing profile from DB
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('profile')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!error && data?.profile) {
+      setProfileData(data.profile);
+      setCurrentStep("profileView");
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    setProfileData(null);
+    setCurrentStep("welcome");
   };
 
   return (
@@ -53,6 +76,7 @@ const Index = () => {
             userId={user.id}
             onComplete={handleVoiceChatComplete}
             onExit={() => setCurrentStep(profileData ? "report" : "welcome")}
+            onViewProfile={handleViewProfile}
           />
         </motion.div>
       )}
@@ -69,6 +93,25 @@ const Index = () => {
             profileData={profileData}
             onFindMatch={() => setCurrentStep("matching")}
             onTalkToLuna={handleTalkToLuna}
+            onLogout={handleLogout}
+          />
+        </motion.div>
+      )}
+
+      {currentStep === "profileView" && (
+        <motion.div
+          key="profileView"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <ProfileReport
+            profileData={profileData}
+            onFindMatch={() => setCurrentStep("matching")}
+            onTalkToLuna={handleTalkToLuna}
+            onLogout={handleLogout}
+            onBack={() => setCurrentStep("voiceChat")}
           />
         </motion.div>
       )}

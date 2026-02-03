@@ -2,23 +2,24 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AudioEqualizer } from "@/components/ui/AudioEqualizer";
-import { Pause, Play, X, Volume2, Loader2, Sparkles, Zap, ChevronLeft, Clock, Bug, MicOff, Mic } from "lucide-react";
+import { Pause, Play, X, Volume2, Loader2, Sparkles, Zap, ChevronLeft, MicOff, Mic, UserCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useVoice, VoiceProvider, TranscriptMessage, getDefaultProvider, GrokVoiceOption, ExistingProfileContext } from "@/hooks/useVoice";
 import type { Scenario } from "@/hooks/useGeminiVoice";
 import { GROK_VOICES } from "@/hooks/useGrokVoice";
-import { formatDuration, estimateSessionCost } from "@/lib/costEstimation";
+import { estimateSessionCost } from "@/lib/costEstimation";
 
 interface VoiceChatProps {
   userId: string;
   onComplete: (profileData: any) => void;
   onExit: () => void;
+  onViewProfile?: () => void;
 }
 
 type VoiceChatStep = 'provider' | 'grokVoice' | 'ready' | 'conversation';
 
-export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
+export function VoiceChat({ userId, onComplete, onExit, onViewProfile }: VoiceChatProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Prêt·e à commencer");
@@ -26,7 +27,6 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
   const [selectedGrokVoice, setSelectedGrokVoice] = useState<GrokVoiceOption | null>(null);
   const [step, setStep] = useState<VoiceChatStep>('provider');
   const [existingProfile, setExistingProfile] = useState<ExistingProfileContext | undefined>(undefined);
-  const [showDebug, setShowDebug] = useState(true);
   const [pendingAnalysis, setPendingAnalysis] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
   const userEndedSessionRef = useRef(false);
@@ -357,22 +357,24 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-cyan-400/5 blur-[120px]" />
         </div>
 
-        {/* Close button */}
-        <motion.div
-          className="absolute top-4 left-4 z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onExit}
-            className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10"
+        {/* Profile icon button */}
+        {onViewProfile && (
+          <motion.div
+            className="absolute top-4 right-4 z-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
           >
-            <X className="w-5 h-5" />
-          </Button>
-        </motion.div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onViewProfile}
+              className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10"
+            >
+              <UserCircle className="w-6 h-6" />
+            </Button>
+          </motion.div>
+        )}
 
         {/* Logo */}
         <motion.img
@@ -606,120 +608,47 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
 
   // ─── STEP 3: Active conversation ───
   return (
-    <div className="min-h-screen flex flex-col bg-warm-gradient">
-      {/* Header */}
-      <motion.header
-        className="flex items-center justify-between p-4"
-        initial={{ opacity: 0, y: -20 }}
+    <div className="min-h-screen flex flex-col bg-warm-gradient relative overflow-hidden">
+      {/* Ambient glow behind scenario */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] rounded-full bg-cyan-400/6 blur-[100px] pointer-events-none" />
+
+      {/* Scenario badge at top */}
+      <motion.div
+        className="pt-14 pb-4 flex justify-center relative z-10"
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.5 }}
       >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            if (isConnected && transcript.length > 0) {
-              endConversation();
-            } else {
-              disconnect();
-              onExit();
-            }
-          }}
-          className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10"
-          disabled={isAnalyzing}
-        >
-          <X className="w-5 h-5" />
-        </Button>
-
-        <div className="flex items-center gap-3">
-          {isConnected && sessionDuration > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/5 border border-white/10">
-              <Clock className="w-3.5 h-3.5 text-white/40" />
-              <span className="text-sm font-mono text-white/40">
-                {formatDuration(sessionDuration)}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
-            <Volume2 className="w-3.5 h-3.5 text-white/40" />
-            <span className="text-xs text-white/40">
-              {provider === 'grok' ? `Grok (${selectedGrokVoice || 'Ara'})` : 'Gemini'}
-            </span>
-          </div>
-        </div>
-
-        <div className="w-10" />
-      </motion.header>
-
-      {/* Scenario Display */}
-      {isConnected && currentScenario && (
-        <motion.div
-          className="mx-4 mb-2 flex justify-center"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20">
-            <span className="text-sm text-white/40">Thème:</span>
-            <span className="text-sm font-semibold text-cyan-400">
-              {scenarioLabels[currentScenario] || currentScenario}
-            </span>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Debug Panel */}
-      {showDebug && (
-        <motion.div
-          className="mx-4 mb-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bug className="w-4 h-4 text-yellow-500" />
-              <span className="text-xs font-mono text-yellow-400">DEBUG</span>
-            </div>
-            <button
-              onClick={() => setShowDebug(false)}
-              className="text-xs text-white/30 hover:text-white/50"
+        <AnimatePresence mode="wait">
+          {isConnected && currentScenario && (
+            <motion.div
+              key={currentScenario}
+              className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/5 border border-cyan-400/15 shadow-[0_0_20px_-4px_hsl(185_80%_55%/0.2)]"
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
             >
-              Masquer
-            </button>
-          </div>
-          <div className="mt-2 space-y-1 text-xs font-mono">
-            <div className="flex justify-between">
-              <span className="text-white/30">Scénario:</span>
-              <span className="text-cyan-400 font-semibold">{currentScenario || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/30">Provider:</span>
-              <span className="text-white/60">{activeProvider}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/30">Session:</span>
-              <span className="text-white/60">{existingProfile ? `#${existingProfile.sessionCount + 1}` : '#1'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/30">Connected:</span>
-              <span>{isConnected ? '✅' : '❌'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/30">Ready:</span>
-              <span>{sessionReady ? '✅' : '❌'}</span>
-            </div>
-          </div>
-        </motion.div>
-      )}
+              <span className="text-sm text-white/50">Thème</span>
+              <span className="w-px h-3.5 bg-white/10" />
+              <span className="text-sm font-semibold text-cyan-300">
+                {scenarioLabels[currentScenario] || currentScenario}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-32">
-        {/* Small logo at top */}
+        {/* Logo - bigger */}
         <motion.img
           src="/echo-logo.png"
           alt="Echo"
-          className="w-12 h-12 object-contain mb-6 opacity-30"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.3 }}
+          className="w-24 h-24 object-contain mb-8 opacity-40"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 0.4, scale: 1 }}
+          transition={{ duration: 0.5 }}
         />
 
         {/* Audio Equalizer */}
@@ -833,7 +762,7 @@ export function VoiceChat({ userId, onComplete, onExit }: VoiceChatProps) {
 
       {/* Bottom Controls */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[hsl(215,15%,18%)] via-[hsl(215,15%,18%)/0.95] to-transparent"
+        className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[hsl(215,15%,11%)] via-[hsl(215,15%,11%)/0.95] to-transparent"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}

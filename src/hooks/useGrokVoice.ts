@@ -18,7 +18,8 @@ import {
   buildScenarioSwitchingInstructions,
   buildFirstSessionPrompt,
   buildReturningUserPrompt,
-  buildDeepeningPrompt
+  buildDeepeningPrompt,
+  detectScenarioFromTranscript
 } from '@/lib/scenarios';
 import { buildAssessmentProposalInstructions } from '@/lib/assessments';
 
@@ -206,40 +207,7 @@ async function getEphemeralToken(): Promise<string> {
 
   if (error) {
     console.error('Error fetching Grok token from Supabase:', error);
-    // Fallback: fetch ephemeral token directly using the API key
-    const apiKey = import.meta.env.VITE_XAI_API_KEY;
-    if (apiKey) {
-      console.warn('Fetching ephemeral token directly - for development only!');
-      try {
-        const response = await fetch('https://api.x.ai/v1/realtime/client_secrets', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            expires_after: { seconds: 3600 }
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('xAI direct API error:', response.status, errorText);
-          throw new Error(`xAI API error: ${response.status}`);
-        }
-
-        const tokenData = await response.json();
-        console.log('Got ephemeral token directly:', tokenData);
-        if (tokenData.value) {
-          return tokenData.value;
-        }
-        throw new Error('No token value in response');
-      } catch (fetchError) {
-        console.error('Failed to fetch ephemeral token directly:', fetchError);
-        throw fetchError;
-      }
-    }
-    throw new Error('Failed to get Grok authentication token');
+    throw new Error('Failed to get Grok authentication token. Ensure the grok-token edge function is deployed and XAI_API_KEY is set as a Supabase secret.');
   }
 
   console.log('Grok token response:', data);
@@ -303,6 +271,10 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
   const maxReconnectAttempts = 3;
   const completedScenariosRef = useRef<ScenarioId[]>([]); // Previously completed scenarios from profile
   const sessionEndedIntentionallyRef = useRef(false);
+
+  // Refs to track scenario state inside WebSocket closure (avoids stale closure)
+  const currentScenarioRef = useRef<ScenarioId>('intro');
+  const scenariosCoveredRef = useRef<ScenarioId[]>([]);
 
   // Grok-specific refs
   const currentAssistantTranscriptRef = useRef<string>('');
@@ -454,7 +426,9 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
         }
 
         setCurrentScenario(nextScenario);
+        currentScenarioRef.current = nextScenario;
         setScenariosCovered([nextScenario]);
+        scenariosCoveredRef.current = [nextScenario];
         options.onScenarioChange?.(nextScenario);
 
         console.log(`Starting Grok session #${session.session_number} for user ${userId}, scenario: ${nextScenario} (deepening: ${isDeepeningMode})`);
@@ -825,6 +799,26 @@ export function useGrokVoice(options: UseGrokVoiceOptions) {
               // Full response complete
               setIsSpeaking(false);
               setIsListening(true);
+
+              // Detect scenario changes from recent assistant messages
+              {
+                const recentAssistant = transcriptRef.current
+                  .filter(m => m.role === 'assistant')
+                  .map(m => m.content)
+                  .slice(-3);
+                const detected = detectScenarioFromTranscript(recentAssistant, currentScenarioRef.current);
+                if (detected) {
+                  console.log(`Grok: Scenario change detected: ${currentScenarioRef.current} → ${detected}`);
+                  setCurrentScenario(detected);
+                  currentScenarioRef.current = detected;
+                  if (!scenariosCoveredRef.current.includes(detected)) {
+                    const updated = [...scenariosCoveredRef.current, detected];
+                    setScenariosCovered(updated);
+                    scenariosCoveredRef.current = updated;
+                  }
+                  options.onScenarioChange?.(detected);
+                }
+              }
               break;
 
             case 'input_audio_buffer.speech_started':

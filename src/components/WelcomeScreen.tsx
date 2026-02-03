@@ -23,10 +23,11 @@ export function WelcomeScreen({ onSuccess }: WelcomeScreenProps) {
   const { signIn, signUp, user } = useAuth();
   const [authSuccess, setAuthSuccess] = useState(false);
 
-  // If already logged in, skip straight through
+  // If already logged in, show logo briefly then proceed
   useEffect(() => {
     if (user) {
-      onSuccess();
+      const timer = setTimeout(() => onSuccess(), 1200);
+      return () => clearTimeout(timer);
     }
   }, [user, onSuccess]);
 

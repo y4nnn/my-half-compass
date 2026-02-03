@@ -18,7 +18,8 @@ import {
   buildScenarioSwitchingInstructions,
   buildFirstSessionPrompt,
   buildReturningUserPrompt,
-  buildDeepeningPrompt
+  buildDeepeningPrompt,
+  detectScenarioFromTranscript
 } from '@/lib/scenarios';
 import { buildAssessmentProposalInstructions } from '@/lib/assessments';
 
@@ -173,6 +174,9 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
   const sessionEndedIntentionallyRef = useRef(false); // Track if session was ended by server (not an error)
+  // Refs to track scenario state inside WebSocket closure (avoids stale closure)
+  const currentScenarioRef = useRef<ScenarioId>('intro');
+  const scenariosCoveredRef = useRef<ScenarioId[]>([]);
   // Accumulate transcription chunks until turn ends
   const pendingInputTranscriptRef = useRef<string>('');
   const pendingOutputTranscriptRef = useRef<string>('');
@@ -327,7 +331,9 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
         }
 
         setCurrentScenario(nextScenario);
+        currentScenarioRef.current = nextScenario;
         setScenariosCovered([nextScenario]); // Start tracking this session's scenarios
+        scenariosCoveredRef.current = [nextScenario];
         options.onScenarioChange?.(nextScenario);
 
         console.log(`Starting session #${session.session_number} for user ${userId}, scenario: ${nextScenario} (deepening: ${isDeepeningMode})`);
@@ -647,6 +653,25 @@ export function useGeminiVoice(options: UseGeminiVoiceOptions) {
                 options.onTranscript?.(newMessage);
                 pendingInputTranscriptRef.current = '';
               }
+
+              // Detect scenario changes from recent assistant messages
+              const recentAssistant = transcriptRef.current
+                .filter(m => m.role === 'assistant')
+                .map(m => m.content)
+                .slice(-3);
+              const detected = detectScenarioFromTranscript(recentAssistant, currentScenarioRef.current);
+              if (detected) {
+                console.log(`Gemini: Scenario change detected: ${currentScenarioRef.current} → ${detected}`);
+                setCurrentScenario(detected);
+                currentScenarioRef.current = detected;
+                if (!scenariosCoveredRef.current.includes(detected)) {
+                  const updated = [...scenariosCoveredRef.current, detected];
+                  setScenariosCovered(updated);
+                  scenariosCoveredRef.current = updated;
+                }
+                options.onScenarioChange?.(detected);
+              }
+
               setIsSpeaking(false);
               setIsListening(true);
               return;

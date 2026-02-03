@@ -1016,3 +1016,77 @@ COMMENT COMMENCER:
 
   return prompt;
 }
+
+/**
+ * Keyword patterns per scenario for detecting topic changes from Luna's transcript.
+ * Each entry maps a ScenarioId to an array of French keywords/phrases.
+ * Detection looks at a sliding window of recent assistant messages.
+ */
+const SCENARIO_KEYWORDS: Record<ScenarioId, string[]> = {
+  intro: ['prenom', 'comment tu t\'appelles', 'tu fais quoi dans la vie', 'tu vis ou', 'tu habites'],
+  love_history: ['ex', 'rupture', 'relation passee', 'histoire amoureuse', 'ton dernier couple', 'ta derniere relation', 'tes relations', 'coeur brise', 'tu as ete en couple'],
+  love_vision: ['relation ideale', 'couple ideal', 'deal-breaker', 'tu cherches quoi', 'dans un couple', 'vision de l\'amour', 'ta moitie', 'partenaire ideal', 'tu attends quoi'],
+  values: ['valeurs', 'important pour toi', 'convictions', 'ce qui compte', 'principes', 'ce en quoi tu crois', 'priorites dans la vie'],
+  family: ['parents', 'famille', 'frere', 'soeur', 'fratrie', 'ta mere', 'ton pere', 'origines', 'tes parents'],
+  emotions: ['emotions', 'tu ressens', 'pleurer', 'colere', 'sensible', 'vulnerable', 'exprimer tes emotions', 'quand t\'es triste', 'quand t\'es en colere'],
+  lifestyle: ['week-end', 'hobby', 'hobbies', 'temps libre', 'passion', 'sport', 'voyage', 'mode de vie', 'quotidien', 'journee type', 'loisirs'],
+  dreams: ['reve', 'ambition', 'aspiration', 'dans 5 ans', 'dans 10 ans', 'tu te vois ou', 'projet de vie', 'objectif', 'espoir'],
+  wounds: ['blessure', 'epreuve', 'moment difficile', 'resilience', 'force', 'traverse', 'surmonte', 'galere', 'dur a vivre'],
+  childhood: ['enfance', 'quand t\'etais petit', 'grandir', 'ton enfance', 'tu as grandi', 'tes parents quand', 'a l\'ecole', 'education'],
+  traumas: ['trauma', 'traumatisme', 'evenement marquant', 'difficile a en parler', 'ce qui t\'a marque', 'douloureux'],
+  work_career: ['travail', 'carriere', 'metier', 'boulot', 'profession', 'ambition pro', 'vie pro', 'ton job', 'ton taf'],
+  parenting: ['enfant', 'enfants', 'parent', 'parentalite', 'devenir parent', 'maternite', 'paternite', 'tu veux des enfants', 'fonder une famille'],
+  sexuality: ['intimite', 'intime', 'physique', 'connexion physique', 'tendresse', 'rapport au corps', 'sensualite'],
+};
+
+/**
+ * Detect which scenario Luna is currently exploring based on recent assistant messages.
+ * Uses keyword matching against the last few assistant utterances.
+ * Returns null if no confident match is found.
+ */
+export function detectScenarioFromTranscript(
+  recentAssistantTexts: string[],
+  currentScenario: ScenarioId,
+): ScenarioId | null {
+  if (recentAssistantTexts.length === 0) return null;
+
+  // Combine last 3 assistant messages into a single lowercase string, strip accents
+  const window = recentAssistantTexts
+    .slice(-3)
+    .join(' ')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Score each scenario by keyword hits
+  const scores: [ScenarioId, number][] = [];
+
+  for (const [scenarioId, keywords] of Object.entries(SCENARIO_KEYWORDS)) {
+    let score = 0;
+    for (const keyword of keywords) {
+      const normalizedKeyword = keyword
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      if (window.includes(normalizedKeyword)) {
+        score++;
+      }
+    }
+    if (score > 0) {
+      scores.push([scenarioId as ScenarioId, score]);
+    }
+  }
+
+  if (scores.length === 0) return null;
+
+  // Sort by score descending
+  scores.sort((a, b) => b[1] - a[1]);
+
+  const bestMatch = scores[0][0];
+  const bestScore = scores[0][1];
+
+  // Need at least 2 keyword hits to switch, and must differ from current
+  if (bestScore < 2 || bestMatch === currentScenario) return null;
+
+  return bestMatch;
+}
