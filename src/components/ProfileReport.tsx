@@ -131,9 +131,9 @@ function TagList({ items }: { items: string[] }) {
 
 function InfoRow({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="flex justify-between items-start py-2.5 border-b border-white/5 last:border-0">
-      <span className="text-sm text-white/40">{label}</span>
-      <span className="text-sm text-white/90 font-medium text-right max-w-[60%]">
+    <div className="flex justify-between items-start py-2.5 border-b border-white/5 last:border-0 gap-4">
+      <span className="text-sm text-white/40 flex-shrink-0">{label}</span>
+      <span className="text-sm text-white/90 font-medium text-right">
         {value || "Non mentionné"}
       </span>
     </div>
@@ -164,7 +164,7 @@ function PageContainer({ children, title, icon: Icon, iconColor }: {
 
 function CardBlock({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`p-4 rounded-2xl bg-white/5 border border-white/10 ${className}`}>
+    <div className={`p-4 rounded-xl bg-white/5 border border-white/10 ${className}`}>
       {children}
     </div>
   );
@@ -624,7 +624,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
                   <div className="space-y-3">
                     <p className="text-xs text-white/40">Sessions ({conversationJournal.sessions.length})</p>
                     {conversationJournal.sessions.map((session: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/5">
                         <div className="flex items-center gap-2 mb-2">
                           <Calendar className="w-3.5 h-3.5 text-white/30" />
                           <span className="text-xs font-medium text-white/70">Session {session.sessionNumber}</span>
@@ -675,7 +675,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
                     if (!result) return null;
                     const Icon = config.icon;
                     return (
-                      <div key={config.id} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div key={config.id} className="p-3 rounded-lg bg-white/5 border border-white/5">
                         <div className="flex items-start gap-3">
                           <Icon className={`w-4 h-4 mt-0.5 ${config.color}`} />
                           <div className="flex-1 min-w-0">
@@ -771,7 +771,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
               <Button
                 onClick={onLogout}
                 variant="outline"
-                className="w-full h-12 rounded-2xl font-semibold bg-white/5 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/30 text-red-400 hover:text-red-300 transition-all"
+                className="w-full h-12 rounded-xl font-semibold bg-white/5 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/30 text-red-400 hover:text-red-300 transition-all"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Se déconnecter
@@ -786,12 +786,16 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
   }, [profileData, onLogout]);
 
   const [currentPage, setCurrentPage] = useState(0);
+  const [direction, setDirection] = useState(0); // -1 = left, 1 = right
   const containerRef = useRef<HTMLDivElement>(null);
 
   const goToPage = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(pages.length - 1, index));
-    setCurrentPage(clamped);
-  }, [pages.length]);
+    if (clamped !== currentPage) {
+      setDirection(clamped > currentPage ? 1 : -1);
+      setCurrentPage(clamped);
+    }
+  }, [pages.length, currentPage]);
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     const threshold = 50;
@@ -854,14 +858,20 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
 
       {/* Swipeable content */}
       <div className="flex-1 relative overflow-hidden" ref={containerRef}>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div
             key={page.id}
+            custom={direction}
             className="absolute inset-0"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            variants={{
+              enter: (d: number) => ({ opacity: 0, x: d > 0 ? 300 : -300 }),
+              center: { opacity: 1, x: 0 },
+              exit: (d: number) => ({ opacity: 0, x: d > 0 ? -300 : 300 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.15}
@@ -917,7 +927,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
         <Button
           onClick={onTalkToLuna}
           size="lg"
-          className="w-full h-14 text-lg rounded-2xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02] bg-cyan-500 hover:bg-cyan-400 text-white"
+          className="w-full h-14 text-lg rounded-xl font-semibold shadow-glow transition-all hover:shadow-warm hover:scale-[1.02] bg-cyan-500 hover:bg-cyan-400 text-white"
         >
           <Mic className="w-5 h-5 mr-2" />
           Parler à Luna
