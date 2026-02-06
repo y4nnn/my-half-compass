@@ -37,20 +37,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+    // Sign out any existing session first to prevent context leakage
+    await supabase.auth.signOut();
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
-    if (!error) {
-      // Create user record in our users table
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        await supabase.from('users').insert({
-          id: authUser.id,
-          email: authUser.email,
-        });
-      }
+    if (!error && data.user) {
+      // Create user record in our users table using the signup response directly
+      await supabase.from('users').insert({
+        id: data.user.id,
+        email: data.user.email,
+      });
     }
 
     return { error: error as Error | null };

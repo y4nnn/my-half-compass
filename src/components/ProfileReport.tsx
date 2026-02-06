@@ -148,7 +148,7 @@ function PageContainer({ children, title, icon: Icon, iconColor }: {
   iconColor?: string;
 }) {
   return (
-    <div className="h-full flex flex-col px-5 pt-4 pb-28 overflow-y-auto">
+    <div className="h-full flex flex-col px-5 pt-4 pb-28 overflow-y-auto overscroll-contain">
       <div className="flex items-center gap-3 mb-5">
         <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center`}>
           <Icon className={`w-5 h-5 ${iconColor || 'text-cyan-400'}`} />
@@ -812,7 +812,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
   const page = pages[currentPage];
 
   return (
-    <div className="min-h-screen bg-warm-gradient flex flex-col relative overflow-hidden">
+    <div className="h-screen bg-warm-gradient flex flex-col relative overflow-hidden">
       {/* Header with page indicator */}
       <motion.div
         className="flex items-center justify-between px-5 pt-4 pb-2"
@@ -863,6 +863,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
             key={page.id}
             custom={direction}
             className="absolute inset-0"
+            style={{ touchAction: 'pan-y' }}
             variants={{
               enter: (d: number) => ({ opacity: 0, x: d > 0 ? 300 : -300 }),
               center: { opacity: 1, x: 0 },
@@ -876,6 +877,7 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.15}
             onDragEnd={handleDragEnd}
+            dragDirectionLock
           >
             <PageContainer
               title={page.title}
@@ -890,7 +892,8 @@ export function ProfileReport({ profileData, onFindMatch, onTalkToLuna, onLogout
 
       {/* Nav arrows + bottom CTA */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[hsl(215,15%,11%)] via-[hsl(215,15%,11%)/0.95] to-transparent"
+        className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[hsl(215,15%,11%)] via-[hsl(215,15%,11%)/0.95] to-transparent z-10"
+        style={{ touchAction: 'manipulation' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
